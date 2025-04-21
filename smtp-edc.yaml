@@ -1,0 +1,108 @@
+# SMTP Enhanced Delivery Client Configuration
+# This is an example configuration file demonstrating all available options
+
+# Server Configuration
+server:
+  host: smtp.example.com
+  port: 587
+  connection:
+    timeout: 30  # seconds
+    keep_alive: true
+    retry:
+      max_attempts: 3
+      delay: 5  # seconds between retries
+    proxy:
+      enabled: false
+      host: proxy.example.com
+      port: 8080
+      type: socks5  # socks5, http
+  transport:
+    type: tcp  # tcp, unix, pipe
+    unix_socket: /var/run/smtp.sock  # for unix transport
+    pipe_command: /usr/sbin/sendmail -bs  # for pipe transport
+
+# Authentication
+auth:
+  type: plain  # plain, login, cram-md5, ntlm, digest-md5, oauth2
+  username: user@example.com
+  password: ${SMTP_PASSWORD}  # Use environment variable
+  oauth2:
+    client_id: your_client_id
+    client_secret: ${OAUTH_CLIENT_SECRET}
+    token_url: https://oauth.example.com/token
+    scope: https://mail.example.com/send
+  tls:
+    enabled: true
+    start_tls: true
+    verify: true
+    cert_file: /path/to/cert.pem
+    key_file: /path/to/key.pem
+    ca_file: /path/to/ca.pem
+
+# Message Defaults
+message:
+  from: default-sender@example.com
+  headers:
+    X-Mailer: SMTP-EDC
+    X-Priority: 3
+  templates:
+    path: /path/to/templates
+    default: default.tmpl
+  attachments:
+    max_size: 10485760  # 10MB in bytes
+    allowed_types:
+      - application/pdf
+      - image/jpeg
+      - image/png
+
+# DKIM Configuration
+dkim:
+  enabled: true
+  domain: example.com
+  selector: mail
+  private_key: /path/to/dkim/private.key
+  headers_to_sign:
+    - From
+    - Subject
+    - To
+    - Date
+
+# Delivery Options
+delivery:
+  queue:
+    type: persistent  # memory, persistent
+    path: /var/spool/smtp-edc
+    batch_size: 100
+    max_size: 1000
+  tracking:
+    enabled: true
+    dsn: true  # Delivery Status Notifications
+    read_receipt: false
+  scheduling:
+    timezone: UTC
+    retry_window: 24h  # Retry window for failed deliveries
+
+# Logging and Debugging
+logging:
+  level: info  # debug, info, warn, error
+  format: json  # json, text
+  output: file  # file, stdout, both
+  file:
+    path: /var/log/smtp-edc
+    max_size: 100MB
+    max_age: 7d
+    max_backups: 5
+  transaction:
+    enabled: true
+    include_data: false  # Don't log message content by default
+  metrics:
+    enabled: true
+    type: prometheus
+    path: /metrics
+
+# Development Options
+development:
+  debug: false
+  verbose: false
+  test_mode: false
+  skip_sending: false 
