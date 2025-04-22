@@ -26,18 +26,18 @@ jobs:
 
       - name: Build for Linux
         run: |
-          GOOS=linux GOARCH=amd64 go build -o smtp-edc-linux-amd64
-          GOOS=linux GOARCH=arm64 go build -o smtp-edc-linux-arm64
+          GOOS=linux GOARCH=amd64 go build -o smtp-edc-linux-amd64 ./cmd/smtp-edc
+          GOOS=linux GOARCH=arm64 go build -o smtp-edc-linux-arm64 ./cmd/smtp-edc
 
       - name: Build for macOS
         run: |
-          GOOS=darwin GOARCH=amd64 go build -o smtp-edc-darwin-amd64
-          GOOS=darwin GOARCH=arm64 go build -o smtp-edc-darwin-arm64
+          GOOS=darwin GOARCH=amd64 go build -o smtp-edc-darwin-amd64 ./cmd/smtp-edc
+          GOOS=darwin GOARCH=arm64 go build -o smtp-edc-darwin-arm64 ./cmd/smtp-edc
 
       - name: Build for Windows
         run: |
-          GOOS=windows GOARCH=amd64 go build -o smtp-edc-windows-amd64.exe
-          GOOS=windows GOARCH=arm64 go build -o smtp-edc-windows-arm64.exe
+          GOOS=windows GOARCH=amd64 go build -o smtp-edc-windows-amd64.exe ./cmd/smtp-edc
+          GOOS=windows GOARCH=arm64 go build -o smtp-edc-windows-arm64.exe ./cmd/smtp-edc
 
       - name: Generate changelog
         run: |
