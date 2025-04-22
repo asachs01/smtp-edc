@@ -56,19 +56,6 @@ release:
   footer: |
     ## Installation
 
-    ### Using Homebrew (macOS/Linux)
-
-    ```bash
-    brew install asachs/tap/smtp-edc
-    ```
-
-    ### Using Scoop (Windows)
-
-    ```powershell
-    scoop bucket add asachs https://github.com/asachs/scoop-bucket.git
-    scoop install smtp-edc
-    ```
-
     ### Manual Installation
 
     1. Download the appropriate binary for your platform from the assets below
