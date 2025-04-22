@@ -24,6 +24,21 @@ jobs:
           go-version: '1.21'
           cache: false
 
+      - name: Build for Linux
+        run: |
+          GOOS=linux GOARCH=amd64 go build -o smtp-edc-linux-amd64
+          GOOS=linux GOARCH=arm64 go build -o smtp-edc-linux-arm64
+
+      - name: Build for macOS
+        run: |
+          GOOS=darwin GOARCH=amd64 go build -o smtp-edc-darwin-amd64
+          GOOS=darwin GOARCH=arm64 go build -o smtp-edc-darwin-arm64
+
+      - name: Build for Windows
+        run: |
+          GOOS=windows GOARCH=amd64 go build -o smtp-edc-windows-amd64.exe
+          GOOS=windows GOARCH=arm64 go build -o smtp-edc-windows-arm64.exe
+
       - name: Generate changelog
         run: |
           echo "## What's Changed" > CHANGELOG.tmp
@@ -38,6 +53,13 @@ jobs:
           draft: false
           prerelease: false
           token: ${{ secrets.GITHUB_TOKEN }}
+          files: |
+            smtp-edc-linux-amd64
+            smtp-edc-linux-arm64
+            smtp-edc-darwin-amd64
+            smtp-edc-darwin-arm64
+            smtp-edc-windows-amd64.exe
+            smtp-edc-windows-arm64.exe
 
       - name: Publish to Go package registry
         run: |
