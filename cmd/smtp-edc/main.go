@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,64 +11,78 @@ import (
 	"github.com/asachs/smtp-edc/internal/client"
 	"github.com/asachs/smtp-edc/internal/config"
 	"github.com/asachs/smtp-edc/internal/message"
+	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 )
 
 var (
-	server          string
-	port            int
-	from            string
-	to              string
-	cc              string
-	bcc             string
-	subject         string
-	body            string
-	bodyFile        string
-	htmlBody        string
-	htmlFile        string
-	authType        string
-	username        string
-	password        string
-	starttls        bool
-	skipVerify      bool
-	debug           bool
-	attachments     string
-	headers         string
-	retries         int
-	timeout         int
-	configFile      string
-	templateFile    string
-	templateData    string
-	validateMX      bool
-	subjectTemplate string
+	cfg *config.SMTPConfig
 )
 
 func init() {
-	flag.StringVar(&configFile, "config", "", "Path to config file (JSON or YAML)")
-	flag.StringVar(&server, "server", "", "SMTP server address")
-	flag.IntVar(&port, "port", 25, "SMTP server port")
-	flag.StringVar(&from, "from", "", "Sender email address")
-	flag.StringVar(&to, "to", "", "Recipient email addresses (comma-separated)")
-	flag.StringVar(&cc, "cc", "", "CC recipient email addresses (comma-separated)")
-	flag.StringVar(&bcc, "bcc", "", "BCC recipient email addresses (comma-separated)")
-	flag.StringVar(&subject, "subject", "", "Email subject")
-	flag.StringVar(&subjectTemplate, "subject-template", "", "Email subject template")
-	flag.StringVar(&body, "body", "", "Email body text")
-	flag.StringVar(&bodyFile, "body-file", "", "File containing email body text")
-	flag.StringVar(&htmlBody, "html", "", "Email HTML body")
-	flag.StringVar(&htmlFile, "html-file", "", "File containing email HTML body")
-	flag.StringVar(&templateFile, "template", "", "Path to email template file")
-	flag.StringVar(&templateData, "template-data", "", "JSON data for template (format: '{\"key\":\"value\"}')")
-	flag.StringVar(&authType, "auth", "", "Authentication type (plain, login, cram-md5)")
-	flag.StringVar(&username, "username", "", "Authentication username")
-	flag.StringVar(&password, "password", "", "Authentication password")
-	flag.BoolVar(&starttls, "starttls", false, "Use STARTTLS")
-	flag.BoolVar(&skipVerify, "skip-verify", false, "Skip TLS certificate verification")
-	flag.BoolVar(&debug, "debug", false, "Enable debug output")
-	flag.StringVar(&attachments, "attachments", "", "Comma-separated list of files to attach")
-	flag.StringVar(&headers, "headers", "", "Custom headers (format: 'Key1: Value1, Key2: Value2')")
-	flag.IntVar(&retries, "retries", 3, "Number of retry attempts for failed operations")
-	flag.IntVar(&timeout, "timeout", 30, "Connection timeout in seconds")
-	flag.BoolVar(&validateMX, "validate-mx", false, "Validate email addresses by checking MX records")
+	// Set default values
+	viper.SetDefault("port", 25)
+	viper.SetDefault("retries", 3)
+	viper.SetDefault("timeout", 30)
+	viper.SetDefault("starttls", false)
+	viper.SetDefault("skip_verify", false)
+	viper.SetDefault("debug", false)
+	viper.SetDefault("validate_mx", false)
+
+	// Bind environment variables
+	viper.BindEnv("server", "SMTP_SERVER")
+	viper.BindEnv("port", "SMTP_PORT")
+	viper.BindEnv("username", "SMTP_USERNAME")
+	viper.BindEnv("password", "SMTP_PASSWORD")
+	viper.BindEnv("from", "SMTP_FROM")
+	viper.BindEnv("to", "SMTP_TO")
+	viper.BindEnv("cc", "SMTP_CC")
+	viper.BindEnv("bcc", "SMTP_BCC")
+	viper.BindEnv("subject", "SMTP_SUBJECT")
+	viper.BindEnv("auth_type", "SMTP_AUTH_TYPE")
+	viper.BindEnv("starttls", "SMTP_STARTTLS")
+	viper.BindEnv("skip_verify", "SMTP_SKIP_VERIFY")
+	viper.BindEnv("debug", "SMTP_DEBUG")
+
+	// Define flags
+	pflag.StringP("config", "c", "", "Path to config file (JSON or YAML)")
+	pflag.StringP("server", "s", "", "SMTP server address")
+	pflag.IntP("port", "p", 25, "SMTP server port")
+	pflag.StringP("from", "f", "", "Sender email address")
+	pflag.StringP("to", "t", "", "Recipient email addresses (comma-separated)")
+	pflag.StringP("cc", "C", "", "CC recipient email addresses (comma-separated)")
+	pflag.StringP("bcc", "B", "", "BCC recipient email addresses (comma-separated)")
+	pflag.StringP("subject", "S", "", "Email subject")
+	pflag.StringP("subject_template", "T", "", "Email subject template")
+	pflag.StringP("body", "b", "", "Email body text")
+	pflag.StringP("body_file", "F", "", "File containing email body text")
+	pflag.StringP("html", "H", "", "Email HTML body")
+	pflag.StringP("html_file", "L", "", "File containing email HTML body")
+	pflag.StringP("template", "e", "", "Path to email template file")
+	pflag.StringP("template_data", "d", "", "JSON data for template (format: '{\"key\":\"value\"}')")
+	pflag.StringP("auth_type", "a", "", "Authentication type (plain, login, cram-md5)")
+	pflag.StringP("username", "u", "", "Authentication username")
+	pflag.StringP("password", "P", "", "Authentication password")
+	pflag.BoolP("starttls", "l", false, "Use STARTTLS")
+	pflag.BoolP("skip_verify", "k", false, "Skip TLS certificate verification")
+	pflag.BoolP("debug", "D", false, "Enable debug output")
+	pflag.StringP("attachments", "A", "", "Comma-separated list of files to attach")
+	pflag.StringP("headers", "h", "", "Custom headers (format: 'Key1: Value1, Key2: Value2')")
+	pflag.IntP("retries", "r", 3, "Number of retry attempts for failed operations")
+	pflag.IntP("timeout", "o", 30, "Connection timeout in seconds")
+	pflag.BoolP("validate_mx", "m", false, "Validate email addresses by checking MX records")
+
+	// Bind flags to Viper
+	pflag.Parse()
+	viper.BindPFlags(pflag.CommandLine)
+
+	// Set config file
+	if configFile := viper.GetString("config"); configFile != "" {
+		viper.SetConfigFile(configFile)
+		if err := viper.ReadInConfig(); err != nil {
+			log.Fatalf("Failed to read config file: %v", err)
+		}
+	}
 }
 
 // parseAddressList splits a comma-separated list of email addresses
@@ -119,44 +132,22 @@ func readFile(filename string) (string, error) {
 }
 
 func main() {
-	flag.Parse()
-
-	// Load configuration
-	var cfg *config.SMTPConfig
-	var err error
-	if configFile != "" {
-		cfg, err = config.LoadConfig(configFile)
-		if err != nil {
-			log.Fatalf("Failed to load config: %v", err)
-		}
-
-		// Use config values if command line flags are not set
-		if server == "" {
-			server = cfg.Server
-		}
-		if port == 25 && cfg.Port != 0 {
-			port = cfg.Port
-		}
-		if username == "" {
-			username = cfg.Username
-		}
-		if password == "" {
-			password = cfg.Password
-		}
-		if authType == "" {
-			authType = cfg.AuthType
-		}
-		if !starttls {
-			starttls = cfg.StartTLS
-		}
-		if !skipVerify {
-			skipVerify = cfg.SkipVerify
-		}
-	}
+	// Validate required fields
+	server := viper.GetString("server")
+	from := viper.GetString("from")
+	to := viper.GetString("to")
+	cc := viper.GetString("cc")
+	bcc := viper.GetString("bcc")
 
 	if server == "" || from == "" || (to == "" && cc == "" && bcc == "") {
 		fmt.Println("Error: server, from, and at least one recipient (to, cc, or bcc) are required")
-		flag.Usage()
+		fmt.Println("Current values:")
+		fmt.Printf("  Server: %s\n", server)
+		fmt.Printf("  From: %s\n", from)
+		fmt.Printf("  To: %s\n", to)
+		fmt.Printf("  CC: %s\n", cc)
+		fmt.Printf("  BCC: %s\n", bcc)
+		pflag.Usage()
 		os.Exit(1)
 	}
 
@@ -169,41 +160,41 @@ func main() {
 	ccAddrs := parseAddressList(cc)
 	bccAddrs := parseAddressList(bcc)
 
-	if err := message.ValidateAddressList(toAddrs, validateMX); err != nil {
+	if err := message.ValidateAddressList(toAddrs, viper.GetBool("validate_mx")); err != nil {
 		log.Fatalf("Invalid To address: %v", err)
 	}
-	if err := message.ValidateAddressList(ccAddrs, validateMX); err != nil {
+	if err := message.ValidateAddressList(ccAddrs, viper.GetBool("validate_mx")); err != nil {
 		log.Fatalf("Invalid Cc address: %v", err)
 	}
-	if err := message.ValidateAddressList(bccAddrs, validateMX); err != nil {
+	if err := message.ValidateAddressList(bccAddrs, viper.GetBool("validate_mx")); err != nil {
 		log.Fatalf("Invalid Bcc address: %v", err)
 	}
 
 	var msg *message.Message
 
 	// Handle templates
-	if templateFile != "" {
+	if templateFile := viper.GetString("template"); templateFile != "" {
 		// Parse template data
 		var data map[string]interface{}
-		if templateData != "" {
+		if templateData := viper.GetString("template_data"); templateData != "" {
 			if err := json.Unmarshal([]byte(templateData), &data); err != nil {
 				log.Fatalf("Failed to parse template data: %v", err)
 			}
 		}
 
 		// Load template
-		tmpl, err := message.LoadTemplate(subjectTemplate, templateFile, "")
+		tmpl, err := message.LoadTemplate(viper.GetString("subject_template"), templateFile, "")
 		if err != nil {
 			log.Fatalf("Failed to load template: %v", err)
 		}
 
 		// Execute template
 		msg, err = tmpl.Execute(&message.TemplateData{
-			From:    from,
+			From:    viper.GetString("from"),
 			To:      toAddrs,
 			Cc:      ccAddrs,
 			Bcc:     bccAddrs,
-			Subject: subject,
+			Subject: viper.GetString("subject"),
 			Data:    data,
 		})
 		if err != nil {
@@ -211,54 +202,50 @@ func main() {
 		}
 	} else {
 		// Create message without template
-		msg = message.NewMessage()
-		msg.From = from
-		msg.To = toAddrs
+		msg = message.NewMessage(viper.GetString("from"), toAddrs, viper.GetString("subject"), viper.GetString("body"))
 		msg.Cc = ccAddrs
 		msg.Bcc = bccAddrs
-		msg.Subject = subject
 
 		// Read body from file if specified
-		if bodyFile != "" {
-			body, err = readFile(bodyFile)
+		if bodyFile := viper.GetString("body_file"); bodyFile != "" {
+			body, err := readFile(bodyFile)
 			if err != nil {
 				log.Fatal(err)
 			}
+			msg.Body = body
 		}
-		msg.Body = body
 
 		// Read HTML body from file if specified
-		if htmlFile != "" {
-			htmlBody, err = readFile(htmlFile)
+		if htmlFile := viper.GetString("html_file"); htmlFile != "" {
+			htmlBody, err := readFile(htmlFile)
 			if err != nil {
 				log.Fatal(err)
 			}
+			msg.HTMLBody = htmlBody
 		}
-		msg.HTMLBody = htmlBody
 	}
 
 	// Add custom headers
-	for key, value := range parseHeaders(headers) {
+	for key, value := range parseHeaders(viper.GetString("headers")) {
 		msg.AddHeader(key, value)
 	}
 
 	// Add attachments
-	if attachments != "" {
+	if attachments := viper.GetString("attachments"); attachments != "" {
 		for _, attachment := range parseAddressList(attachments) {
-			att, err := message.ReadFileAttachment(attachment)
-			if err != nil {
+			if _, err := message.ReadFileAttachment(attachment); err != nil {
 				log.Fatalf("Failed to read attachment %s: %v", attachment, err)
 			}
-			msg.AddAttachment(att.Filename, att.ContentType, att.Data)
+			msg.AddAttachment(attachment)
 		}
 	}
 
 	// Create SMTP client
-	client := client.NewSMTPClient("localhost", debug)
-	client.SetRetryConfig(retries, time.Duration(timeout)*time.Second)
+	client := client.NewSMTPClient("localhost", viper.GetBool("debug"))
+	client.SetRetryConfig(viper.GetInt("retries"), time.Duration(viper.GetInt("timeout"))*time.Second)
 
 	// Connect to server
-	if err := client.Connect(server, port); err != nil {
+	if err := client.Connect(viper.GetString("server"), viper.GetInt("port")); err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 	defer client.Close()
@@ -269,7 +256,7 @@ func main() {
 	}
 
 	// Start TLS if requested
-	if starttls {
+	if viper.GetBool("starttls") {
 		if err := client.StartTLS(); err != nil {
 			log.Fatalf("Failed to start TLS: %v", err)
 		}
@@ -280,7 +267,9 @@ func main() {
 	}
 
 	// Authenticate if requested
-	if authType != "" {
+	if authType := viper.GetString("auth_type"); authType != "" {
+		username := viper.GetString("username")
+		password := viper.GetString("password")
 		if username == "" || password == "" {
 			log.Fatal("Username and password are required for authentication")
 		}

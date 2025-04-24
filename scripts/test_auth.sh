@@ -70,4 +70,4 @@ else
     exit 1
 fi
 
-echo "All authentication tests completed successfully!" 
+echo "All authentication tests completed successfully!"

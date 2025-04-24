@@ -63,4 +63,4 @@ jobs:
 
       - name: Publish to Go package registry
         run: |
-          GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${GITHUB_REF#refs/tags/} 
+          GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${GITHUB_REF#refs/tags/}

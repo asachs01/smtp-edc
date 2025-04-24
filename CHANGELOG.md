@@ -34,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 - Added support for secure authentication methods
-- Added TLS/STARTTLS support for encrypted connections 
+- Added TLS/STARTTLS support for encrypted connections

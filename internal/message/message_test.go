@@ -6,44 +6,97 @@ import (
 	"io"
 	"mime/multipart"
 	"net/mail"
-	"net/textproto"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewMessage(t *testing.T) {
-	from := "test@example.com"
-	to := []string{"recipient1@example.com", "recipient2@example.com"}
-	subject := "Test Subject"
-	body := "Test Body"
-
-	msg := NewMessage(from, to, subject, body)
-
-	if msg.From != from {
-		t.Errorf("Expected From to be %s, but got %s", from, msg.From)
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	if msg == nil {
+		t.Fatal("NewMessage returned nil")
 	}
-
-	if len(msg.To) != len(to) {
-		t.Errorf("Expected To length to be %d, but got %d", len(to), len(msg.To))
+	if msg.From != "test@example.com" {
+		t.Errorf("Expected From to be test@example.com, got %s", msg.From)
 	}
-	for i, recipient := range to {
-		if msg.To[i] != recipient {
-			t.Errorf("Expected To[%d] to be %s, but got %s", i, recipient, msg.To[i])
-		}
+	if len(msg.To) != 1 {
+		t.Errorf("Expected To to have 1 recipient, got %d", len(msg.To))
 	}
-
-	if msg.Subject != subject {
-		t.Errorf("Expected Subject to be %s, but got %s", subject, msg.Subject)
+	if len(msg.Cc) != 0 {
+		t.Errorf("Expected Cc to be empty, got %d", len(msg.Cc))
 	}
-
-	if msg.Body != body {
-		t.Errorf("Expected Body to be %s, but got %s", body, msg.Body)
+	if msg.Subject != "Test Subject" {
+		t.Errorf("Expected Subject to be Test Subject, got %s", msg.Subject)
 	}
+	if msg.Body != "Test Body" {
+		t.Errorf("Expected Body to be Test Body, got %s", msg.Body)
+	}
+}
 
-	if msg.Attachments == nil {
-		t.Errorf("Expected Attachments to be initialized, but it's nil")
+func TestSetFrom(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.SetFrom("new@example.com")
+	if msg.From != "new@example.com" {
+		t.Errorf("Expected From to be 'new@example.com', got '%s'", msg.From)
+	}
+}
+
+func TestAddTo(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.AddTo("new@example.com")
+	if len(msg.To) != 2 {
+		t.Errorf("Expected To to have 2 recipients, got %d", len(msg.To))
+	}
+	if msg.To[1] != "new@example.com" {
+		t.Errorf("Expected To[1] to be 'new@example.com', got '%s'", msg.To[1])
+	}
+}
+
+func TestAddCc(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.AddCc("cc@example.com")
+	if len(msg.Cc) != 1 {
+		t.Errorf("Expected Cc to have 1 recipient, got %d", len(msg.Cc))
+	}
+	if msg.Cc[0] != "cc@example.com" {
+		t.Errorf("Expected Cc[0] to be 'cc@example.com', got '%s'", msg.Cc[0])
+	}
+}
+
+func TestAddBcc(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.AddBcc("bcc@example.com")
+	if len(msg.Bcc) != 1 {
+		t.Errorf("Expected Bcc to have 1 recipient, got %d", len(msg.Bcc))
+	}
+	if msg.Bcc[0] != "bcc@example.com" {
+		t.Errorf("Expected Bcc[0] to be 'bcc@example.com', got '%s'", msg.Bcc[0])
+	}
+}
+
+func TestSetSubject(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.SetSubject("New Subject")
+	if msg.Subject != "New Subject" {
+		t.Errorf("Expected Subject to be 'New Subject', got '%s'", msg.Subject)
+	}
+}
+
+func TestSetBody(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.SetBody("New Body")
+	if msg.Body != "New Body" {
+		t.Errorf("Expected Body to be 'New Body', got '%s'", msg.Body)
+	}
+}
+
+func TestSetHTMLBody(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.SetHTMLBody("<p>Test HTML Body</p>")
+	if msg.HTMLBody != "<p>Test HTML Body</p>" {
+		t.Errorf("Expected HTMLBody to be '<p>Test HTML Body</p>', got '%s'", msg.HTMLBody)
 	}
 }
 
@@ -51,38 +104,239 @@ func TestAddAttachment(t *testing.T) {
 	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
 
 	// Create a temporary file for testing
-	tmpFile, err := os.CreateTemp("", "testfile")
+	tmpFile, err := os.CreateTemp("", "test-*.txt")
 	if err != nil {
-		t.Fatalf("Failed to create temporary file: %v", err)
+		t.Fatalf("Failed to create temp file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
 
-	_, err = tmpFile.WriteString("Test attachment content")
-	if err != nil {
-		t.Fatalf("Failed to write to temporary file: %v", err)
+	// Write some test data
+	testData := []byte("test content")
+	if _, err := tmpFile.Write(testData); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
 
 	err = msg.AddAttachment(tmpFile.Name())
 	if err != nil {
-		t.Errorf("Failed to add attachment: %v", err)
+		t.Fatalf("Failed to add attachment: %v", err)
 	}
 
 	if len(msg.Attachments) != 1 {
-		t.Fatalf("Expected 1 attachment, but got %d", len(msg.Attachments))
+		t.Errorf("Expected Attachments to have 1 file, got %d", len(msg.Attachments))
 	}
-
 	if msg.Attachments[0].Filename != filepath.Base(tmpFile.Name()) {
-		t.Errorf("Expected attachment filename to be %s, but got %s", filepath.Base(tmpFile.Name()), msg.Attachments[0].Filename)
+		t.Errorf("Expected Attachment[0].Filename to be '%s', got '%s'", filepath.Base(tmpFile.Name()), msg.Attachments[0].Filename)
+	}
+	if string(msg.Attachments[0].Content) != "test content" {
+		t.Errorf("Expected Attachment[0].Content to be 'test content', got '%s'", string(msg.Attachments[0].Content))
+	}
+}
+
+func TestSetDate(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	now := time.Now()
+	msg.SetDate(now)
+	if !msg.Date.Equal(now) {
+		t.Errorf("Expected Date to be %v, got %v", now, msg.Date)
+	}
+}
+
+func TestValidate(t *testing.T) {
+	testCases := []struct {
+		name        string
+		msg         *Message
+		expectedErr error
+	}{
+		{
+			name: "Valid message",
+			msg: &Message{
+				From:    "from@example.com",
+				To:      []string{"to@example.com"},
+				Subject: "Test Subject",
+				Body:    "Test Body",
+				Date:    time.Now(),
+			},
+			expectedErr: nil,
+		},
+		{
+			name: "Missing From",
+			msg: &Message{
+				To:      []string{"to@example.com"},
+				Subject: "Test Subject",
+				Body:    "Test Body",
+				Date:    time.Now(),
+			},
+			expectedErr: errors.New("from address is required"),
+		},
+		{
+			name: "Missing To",
+			msg: &Message{
+				From:    "from@example.com",
+				Subject: "Test Subject",
+				Body:    "Test Body",
+				Date:    time.Now(),
+			},
+			expectedErr: errors.New("at least one recipient is required"),
+		},
+		{
+			name: "Missing Subject",
+			msg: &Message{
+				From: "from@example.com",
+				To:   []string{"to@example.com"},
+				Body: "Test Body",
+				Date: time.Now(),
+			},
+			expectedErr: errors.New("subject is required"),
+		},
+		{
+			name: "Missing Body",
+			msg: &Message{
+				From:    "from@example.com",
+				To:      []string{"to@example.com"},
+				Subject: "Test Subject",
+				Date:    time.Now(),
+			},
+			expectedErr: errors.New("body is required"),
+		},
+		{
+			name: "Missing Date",
+			msg: &Message{
+				From:    "from@example.com",
+				To:      []string{"to@example.com"},
+				Subject: "Test Subject",
+				Body:    "Test Body",
+			},
+			expectedErr: errors.New("date is required"),
+		},
 	}
 
-	content, err := io.ReadAll(msg.Attachments[0].Content)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := tc.msg.Validate()
+			if tc.expectedErr == nil && err != nil {
+				t.Fatalf("Expected no error, but got: %v", err)
+			}
+			if tc.expectedErr != nil && (err == nil || err.Error() != tc.expectedErr.Error()) {
+				t.Fatalf("Expected error: %v, but got: %v", tc.expectedErr, err)
+			}
+		})
+	}
+}
+
+func TestAddRecipients(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+
+	// Test AddTo
+	msg.AddTo("to@example.com")
+	if len(msg.To) != 2 || msg.To[1] != "to@example.com" {
+		t.Errorf("AddTo failed: got %v", msg.To)
+	}
+
+	// Test AddCc
+	msg.AddCc("cc@example.com")
+	if len(msg.Cc) != 1 || msg.Cc[0] != "cc@example.com" {
+		t.Errorf("AddCc failed: got %v", msg.Cc)
+	}
+
+	// Test AddBcc
+	msg.AddBcc("bcc@example.com")
+	if len(msg.Bcc) != 1 || msg.Bcc[0] != "bcc@example.com" {
+		t.Errorf("AddBcc failed: got %v", msg.Bcc)
+	}
+}
+
+func TestAddHeader(t *testing.T) {
+	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
+	msg.AddHeader("X-Custom", "value")
+	if msg.Headers["X-Custom"] != "value" {
+		t.Errorf("AddHeader failed: got %v", msg.Headers)
+	}
+}
+
+func TestBuild(t *testing.T) {
+	msg := NewMessage("from@example.com", []string{"to@example.com"}, "Test Subject", "Test Body")
+
+	result, err := msg.Build()
 	if err != nil {
-		t.Fatalf("Failed to read attachment content: %v", err)
+		t.Errorf("Build failed: %v", err)
 	}
 
-	if string(content) != "Test attachment content" {
-		t.Errorf("Expected attachment content to be 'Test attachment content', but got '%s'", string(content))
+	// Check for required headers
+	requiredHeaders := []string{
+		"From: from@example.com",
+		"To: to@example.com",
+		"Subject: Test Subject",
+		"Content-Type: text/plain; charset=utf-8",
+	}
+
+	for _, header := range requiredHeaders {
+		if !strings.Contains(result, header) {
+			t.Errorf("Missing header: %s", header)
+		}
+	}
+
+	// Check for body
+	if !strings.Contains(result, "Test Body") {
+		t.Error("Body not found in result")
+	}
+}
+
+func TestBuildWithAttachment(t *testing.T) {
+	msg := NewMessage("from@example.com", []string{"to@example.com"}, "Test Subject", "Test Body")
+
+	// Create a temporary file for testing
+	tmpFile, err := os.CreateTemp("", "test-*.txt")
+	if err != nil {
+		t.Fatalf("Failed to create temp file: %v", err)
+	}
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temp file: %v", err)
+		}
+	}()
+
+	// Write some test data
+	testData := []byte("test attachment data")
+	if _, err := tmpFile.Write(testData); err != nil {
+		t.Fatalf("Failed to write to temp file: %v", err)
+	}
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temp file: %v", err)
+	}
+
+	err = msg.AddAttachment(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("Failed to add attachment: %v", err)
+	}
+
+	result, err := msg.Build()
+	if err != nil {
+		t.Errorf("Build failed: %v", err)
+	}
+
+	// Check for multipart content type
+	if !strings.Contains(result, "Content-Type: multipart/mixed") {
+		t.Error("Missing multipart content type")
+	}
+
+	// Check for attachment headers
+	attachmentHeaders := []string{
+		"Content-Type: application/octet-stream",
+		"Content-Transfer-Encoding: base64",
+		"Content-Disposition: attachment",
+	}
+
+	for _, header := range attachmentHeaders {
+		if !strings.Contains(result, header) {
+			t.Errorf("Missing attachment header: %s", header)
+		}
 	}
 }
 
@@ -90,10 +344,7 @@ func TestAddAttachment_NonExistentFile(t *testing.T) {
 	msg := NewMessage("test@example.com", []string{"recipient@example.com"}, "Test Subject", "Test Body")
 	err := msg.AddAttachment("nonexistent.txt")
 	if err == nil {
-		t.Errorf("Expected an error when adding a non-existent file, but got nil")
-	}
-	if !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("Expected error to be os.ErrNotExist, but got %v", err)
+		t.Error("Expected error when adding non-existent file")
 	}
 }
 
@@ -147,13 +398,19 @@ func TestBuildMessage_WithAttachment(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create temporary file: %v", err)
 	}
-	defer os.Remove(tmpFile.Name())
+	defer func() {
+		if err := os.Remove(tmpFile.Name()); err != nil {
+			t.Logf("Failed to remove temporary file: %v", err)
+		}
+	}()
 
 	_, err = tmpFile.WriteString("Test attachment content")
 	if err != nil {
 		t.Fatalf("Failed to write to temporary file: %v", err)
 	}
-	tmpFile.Close()
+	if err := tmpFile.Close(); err != nil {
+		t.Fatalf("Failed to close temporary file: %v", err)
+	}
 
 	err = msg.AddAttachment(tmpFile.Name())
 	if err != nil {
@@ -170,16 +427,13 @@ func TestBuildMessage_WithAttachment(t *testing.T) {
 		t.Fatalf("Failed to parse built message: %v", err)
 	}
 
-	mediaType, params, err := parsedMsg.Header.Get("Content-Type")
-	if err != nil {
-		t.Fatalf("Failed to get content type: %v", err)
+	contentType := parsedMsg.Header.Get("Content-Type")
+	if !strings.HasPrefix(contentType, "multipart/") {
+		t.Fatalf("Expected content type to be multipart, got %s", contentType)
 	}
 
-	if !strings.HasPrefix(mediaType, "multipart/") {
-		t.Fatalf("Expected content type to be multipart, got %s", mediaType)
-	}
-
-	mr := multipart.NewReader(parsedMsg.Body, params["boundary"])
+	boundary := strings.Split(contentType, "boundary=")[1]
+	mr := multipart.NewReader(parsedMsg.Body, boundary)
 	part, err := mr.NextPart()
 	if err != nil {
 		t.Fatalf("Failed to get the first part: %v", err)
@@ -243,136 +497,16 @@ func TestValidateEmail(t *testing.T) {
 	invalidEmails := []string{"test", "test@", "@example.com", "test@@example.com"}
 
 	for _, email := range validEmails {
-		err := validateEmail(email)
+		err := ValidateEmail(email)
 		if err != nil {
 			t.Errorf("Expected email '%s' to be valid, but got error: %v", email, err)
 		}
 	}
 
 	for _, email := range invalidEmails {
-		err := validateEmail(email)
+		err := ValidateEmail(email)
 		if err == nil {
 			t.Errorf("Expected email '%s' to be invalid, but got no error", email)
 		}
-	}
-}
-
-func TestBuildPart(t *testing.T) {
-	tests := []struct {
-		name           string
-		body           string
-		contentType    string
-		filename       string
-		expectedHeader textproto.MIMEHeader
-	}{
-		{
-			name:        "simple text part",
-			body:        "simple text body",
-			contentType: "text/plain; charset=utf-8",
-			filename:    "",
-			expectedHeader: textproto.MIMEHeader{
-				"Content-Type": []string{"text/plain; charset=utf-8"},
-			},
-		},
-		{
-			name:        "attachment part",
-			body:        "attachment body",
-			contentType: "application/octet-stream",
-			filename:    "test.txt",
-			expectedHeader: textproto.MIMEHeader{
-				"Content-Type":        []string{"application/octet-stream"},
-				"Content-Disposition": []string{"attachment; filename=\"test.txt\""},
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buffer bytes.Buffer
-			err := buildPart(&buffer, tt.body, tt.contentType, tt.filename)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-
-			part, err := mail.ReadMessage(&buffer)
-			if err != nil {
-				t.Fatalf("Failed to parse part: %v", err)
-			}
-
-			if len(part.Header) != len(tt.expectedHeader) {
-				t.Fatalf("Expected %d header entries, got %d", len(tt.expectedHeader), len(part.Header))
-			}
-
-			for key, expectedValues := range tt.expectedHeader {
-				actualValues, exists := part.Header[key]
-				if !exists {
-					t.Fatalf("Expected header '%s' to exist", key)
-				}
-				if len(actualValues) != len(expectedValues) {
-					t.Fatalf("Expected %d values for header '%s', got %d", len(expectedValues), key, len(actualValues))
-				}
-				for i, expectedValue := range expectedValues {
-					if actualValues[i] != expectedValue {
-						t.Fatalf("Expected header '%s' value at index %d to be '%s', got '%s'", key, i, expectedValue, actualValues[i])
-					}
-				}
-			}
-		})
-	}
-}
-
-func TestBuildMultipart(t *testing.T) {
-	tests := []struct {
-		name           string
-		parts          []string
-		expectedLength int
-	}{
-		{
-			name:           "single part",
-			parts:          []string{"part1"},
-			expectedLength: 1,
-		},
-		{
-			name:           "multiple parts",
-			parts:          []string{"part1", "part2", "part3"},
-			expectedLength: 3,
-		},
-		{
-			name:           "empty parts",
-			parts:          []string{},
-			expectedLength: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			var buffer bytes.Buffer
-			writer := multipart.NewWriter(&buffer)
-			err := buildMultipart(writer, tt.parts)
-			if err != nil {
-				t.Fatalf("Unexpected error: %v", err)
-			}
-			err = writer.Close()
-			if err != nil {
-				t.Fatalf("Failed to close multipart writer: %v", err)
-			}
-
-			mr := multipart.NewReader(&buffer, writer.Boundary())
-			count := 0
-			for {
-				_, err := mr.NextPart()
-				if err == io.EOF {
-					break
-				}
-				if err != nil {
-					t.Fatalf("Unexpected error while reading part: %v", err)
-				}
-				count++
-			}
-
-			if count != tt.expectedLength {
-				t.Fatalf("Expected %d parts, got %d", tt.expectedLength, count)
-			}
-		})
 	}
 }

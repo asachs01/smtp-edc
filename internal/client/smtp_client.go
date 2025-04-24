@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"net"
+	"net/smtp"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,7 @@ type SMTPClient struct {
 	retry        RetryConfig
 	timeout      time.Duration
 	capabilities ServerCapabilities
+	client       smtp.Client
 }
 
 // NewSMTPClient creates a new SMTP client connection
@@ -91,6 +93,22 @@ func (c *SMTPClient) withRetry(operation string, fn func() error) error {
 // Connect establishes a connection to the SMTP server
 func (c *SMTPClient) Connect(server string, port int) error {
 	return c.withRetry("connect", func() error {
+		// If we already have a connection (likely a mock in tests), use it
+		if c.conn != nil {
+			// Test the connection by trying to read the server greeting
+			c.reader = bufio.NewReader(c.conn)
+			c.writer = bufio.NewWriter(c.conn)
+			c.server = server
+
+			// Read server greeting to verify connection
+			_, err := c.readResponse()
+			if err != nil {
+				return fmt.Errorf("failed to read server greeting: %v", err)
+			}
+
+			return nil
+		}
+
 		addr := fmt.Sprintf("%s:%d", server, port)
 
 		// Create connection with timeout
@@ -566,4 +584,51 @@ func (c *SMTPClient) Quit() error {
 
 	_, err = c.readResponse()
 	return err
+}
+
+// Send sends an email using the high-level smtp.SendMail function
+func (c *SMTPClient) Send(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	return c.withRetry("Send", func() error {
+		return smtp.SendMail(addr, auth, from, to, msg)
+	})
+}
+
+// SendRaw sends an email using the low-level SMTP commands
+func (c *SMTPClient) SendRaw(addr string, auth smtp.Auth, from string, to []string, msg []byte) error {
+	return c.withRetry("SendRaw", func() error {
+		if err := c.client.Auth(auth); err != nil {
+			return fmt.Errorf("auth failed: %v", err)
+		}
+
+		if err := c.client.Hello(c.hostname); err != nil {
+			return fmt.Errorf("hello failed: %v", err)
+		}
+
+		if err := c.client.Mail(from); err != nil {
+			return fmt.Errorf("mail from failed: %v", err)
+		}
+
+		for _, addr := range to {
+			if err := c.client.Rcpt(addr); err != nil {
+				return fmt.Errorf("rcpt to failed: %v", err)
+			}
+		}
+
+		w, err := c.client.Data()
+		if err != nil {
+			return fmt.Errorf("data failed: %v", err)
+		}
+
+		_, err = w.Write(msg)
+		if err != nil {
+			return fmt.Errorf("write failed: %v", err)
+		}
+
+		err = w.Close()
+		if err != nil {
+			return fmt.Errorf("close failed: %v", err)
+		}
+
+		return c.client.Quit()
+	})
 }

@@ -3,7 +3,7 @@ package message
 import (
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -11,7 +11,7 @@ import (
 // ReadFileAttachment reads a file and creates an attachment
 func ReadFileAttachment(filename string) (*Attachment, error) {
 	// Read file content
-	data, err := ioutil.ReadFile(filename)
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %v", err)
 	}
@@ -22,13 +22,22 @@ func ReadFileAttachment(filename string) (*Attachment, error) {
 	return &Attachment{
 		Filename:    filepath.Base(filename),
 		ContentType: contentType,
-		Data:        data,
+		Content:     data,
 	}, nil
+}
+
+// NewAttachment creates a new attachment from a file
+func NewAttachment(filename string, contentType string, content []byte) *Attachment {
+	return &Attachment{
+		Filename:    filename,
+		ContentType: contentType,
+		Content:     content,
+	}
 }
 
 // EncodeBase64 encodes the attachment data in base64
 func (a *Attachment) EncodeBase64() string {
-	return base64.StdEncoding.EncodeToString(a.Data)
+	return base64.StdEncoding.EncodeToString(a.Content)
 }
 
 // determineContentType determines the MIME type based on file extension

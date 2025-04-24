@@ -10,15 +10,16 @@ func TestLoadConfig(t *testing.T) {
 	// Create a temporary config file for testing
 	tempConfigFile := "temp_config.yaml"
 	configContent := `
-smtp:
-  host: "test.smtp.com"
-  port: 587
-  username: "testuser"
-  password: "testpassword"
-  from: "test@example.com"
-tls: true
-auth:
-  mechanisms: ["PLAIN", "LOGIN"]
+server: "test.smtp.com"
+port: 587
+username: "testuser"
+password: "testpassword"
+auth_type: "plain"
+starttls: true
+skip_verify: false
+templates:
+  welcome: "welcome.txt"
+  reset: "reset.txt"
 `
 	err := os.WriteFile(tempConfigFile, []byte(configContent), 0644)
 	if err != nil {
@@ -33,17 +34,17 @@ auth:
 	}
 
 	// Expected config values
-	expectedConfig := &Config{
-		SMTP: SMTPConfig{
-			Host:     "test.smtp.com",
-			Port:     587,
-			Username: "testuser",
-			Password: "testpassword",
-			From:     "test@example.com",
-		},
-		TLS: true,
-		Auth: AuthConfig{
-			Mechanisms: []string{"PLAIN", "LOGIN"},
+	expectedConfig := &SMTPConfig{
+		Server:     "test.smtp.com",
+		Port:       587,
+		Username:   "testuser",
+		Password:   "testpassword",
+		AuthType:   "plain",
+		StartTLS:   true,
+		SkipVerify: false,
+		Templates: map[string]string{
+			"welcome": "welcome.txt",
+			"reset":   "reset.txt",
 		},
 	}
 
@@ -59,74 +60,99 @@ auth:
 	}
 }
 
+func TestSaveConfig(t *testing.T) {
+	// Create a test config
+	testConfig := &SMTPConfig{
+		Server:     "test.smtp.com",
+		Port:       587,
+		Username:   "testuser",
+		Password:   "testpassword",
+		AuthType:   "plain",
+		StartTLS:   true,
+		SkipVerify: false,
+		Templates: map[string]string{
+			"welcome": "welcome.txt",
+		},
+	}
+
+	// Test saving to YAML
+	tempYAMLFile := "temp_config.yaml"
+	defer os.Remove(tempYAMLFile)
+
+	err := SaveConfig(testConfig, tempYAMLFile)
+	if err != nil {
+		t.Fatalf("SaveConfig failed for YAML: %v", err)
+	}
+
+	// Test loading the saved YAML config
+	loadedConfig, err := LoadConfig(tempYAMLFile)
+	if err != nil {
+		t.Fatalf("Failed to load saved YAML config: %v", err)
+	}
+
+	if !reflect.DeepEqual(loadedConfig, testConfig) {
+		t.Errorf("Loaded YAML config does not match saved config. Got: %+v, Expected: %+v", loadedConfig, testConfig)
+	}
+
+	// Test saving to JSON
+	tempJSONFile := "temp_config.json"
+	defer os.Remove(tempJSONFile)
+
+	err = SaveConfig(testConfig, tempJSONFile)
+	if err != nil {
+		t.Fatalf("SaveConfig failed for JSON: %v", err)
+	}
+
+	// Test loading the saved JSON config
+	loadedConfig, err = LoadConfig(tempJSONFile)
+	if err != nil {
+		t.Fatalf("Failed to load saved JSON config: %v", err)
+	}
+
+	if !reflect.DeepEqual(loadedConfig, testConfig) {
+		t.Errorf("Loaded JSON config does not match saved config. Got: %+v, Expected: %+v", loadedConfig, testConfig)
+	}
+}
+
 func TestValidate(t *testing.T) {
-	validConfig := &Config{
-		SMTP: SMTPConfig{
-			Host:     "smtp.example.com",
-			Port:     587,
-			Username: "user",
-			Password: "password",
-			From:     "user@example.com",
-		},
-		TLS: true,
-		Auth: AuthConfig{
-			Mechanisms: []string{"PLAIN", "LOGIN"},
-		},
+	validConfig := &SMTPConfig{
+		Server:     "smtp.example.com",
+		Port:       587,
+		Username:   "user",
+		Password:   "password",
+		AuthType:   "plain",
+		StartTLS:   true,
+		SkipVerify: false,
 	}
 
 	if err := validConfig.Validate(); err != nil {
 		t.Errorf("Validate returned an error for a valid config: %v", err)
 	}
 
-	invalidConfig := &Config{
-		SMTP: SMTPConfig{
-			Host:     "",
-			Port:     587,
-			Username: "user",
-			Password: "password",
-			From:     "user@example.com",
-		},
-		TLS: true,
-		Auth: AuthConfig{
-			Mechanisms: []string{"PLAIN", "LOGIN"},
-		},
+	invalidConfig := &SMTPConfig{
+		Server:     "",
+		Port:       587,
+		Username:   "user",
+		Password:   "password",
+		AuthType:   "plain",
+		StartTLS:   true,
+		SkipVerify: false,
 	}
 
 	if err := invalidConfig.Validate(); err == nil {
 		t.Errorf("Validate did not return an error for an invalid config")
 	}
 
-	invalidConfig2 := &Config{
-		SMTP: SMTPConfig{
-			Host:     "smtp.example.com",
-			Port:     587,
-			Username: "",
-			Password: "password",
-			From:     "user@example.com",
-		},
-		TLS: true,
-		Auth: AuthConfig{
-			Mechanisms: []string{"PLAIN", "LOGIN"},
-		},
+	invalidConfig2 := &SMTPConfig{
+		Server:     "smtp.example.com",
+		Port:       587,
+		Username:   "",
+		Password:   "password",
+		AuthType:   "plain",
+		StartTLS:   true,
+		SkipVerify: false,
 	}
 	if err := invalidConfig2.Validate(); err == nil {
-		t.Errorf("Validate did not return an error for an invalid config")
-	}
-
-	invalidConfig3 := &Config{
-		SMTP: SMTPConfig{
-			Host:     "smtp.example.com",
-			Port:     587,
-			Username: "user",
-			Password: "password",
-			From:     "",
-		},
-		TLS: true,
-		Auth: AuthConfig{
-			Mechanisms: []string{"PLAIN", "LOGIN"},
-		},
-	}
-	if err := invalidConfig3.Validate(); err == nil {
 		t.Errorf("Validate did not return an error for an invalid config")
 	}
 }

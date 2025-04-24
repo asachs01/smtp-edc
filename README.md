@@ -1,3 +1,8 @@
+[![Release](https://github.com/asachs01/smtp-edc/actions/workflows/release.yml/badge.svg)](https://github.com/asachs01/smtp-edc/actions/workflows/release.yml)
+
+![SMTP-EDC Logo](./smtp-edc.png)
+
+
 # SMTP-EDC
 
 A cross-platform SMTP testing tool written in Go, equivalent to Swaks.
@@ -85,4 +90,4 @@ MIT License
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. 
+Contributions are welcome! Please feel free to submit a Pull Request.

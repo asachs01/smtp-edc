@@ -22,4 +22,4 @@ if [ $? -eq 0 ]; then
 else
     echo "Test failed!"
     exit 1
-fi 
+fi

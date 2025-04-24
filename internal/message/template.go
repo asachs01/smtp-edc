@@ -92,9 +92,7 @@ func LoadTemplateFromString(subjectTemplate, textTemplate, htmlTemplate string) 
 
 // Execute renders the template with the given data
 func (t *Template) Execute(data *TemplateData) (*Message, error) {
-	msg := NewMessage()
-	msg.From = data.From
-	msg.To = data.To
+	msg := NewMessage(data.From, data.To, data.Subject, "")
 	msg.Cc = data.Cc
 	msg.Bcc = data.Bcc
 

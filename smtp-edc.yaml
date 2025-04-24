@@ -105,4 +105,4 @@ development:
   debug: false
   verbose: false
   test_mode: false
-  skip_sending: false 
+  skip_sending: false

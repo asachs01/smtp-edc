@@ -1,348 +1,247 @@
 package client
 
 import (
-	"bytes"
 	"errors"
-	"io"
-	"net/smtp"
+	"net"
 	"testing"
+	"time"
+
+	"github.com/asachs/smtp-edc/internal/message"
 )
 
 // MockSMTPClient is a mock implementation of the SMTPClient interface for testing.
 type MockSMTPClient struct {
-	SendMailFunc func(addr string, a smtp.Auth, from string, to []string, msg []byte) error
-	CloseFunc    func() error
-	AuthFunc     func(a smtp.Auth) error
-	HelloFunc    func(localName string) error
-	MailFunc     func(from string) error
-	RcptFunc     func(to string) error
-	DataFunc     func() (io.WriteCloser, error)
-	QuitFunc     func() error
+	ConnectFunc      func(server string, port int) error
+	StartTLSFunc     func() error
+	AuthenticateFunc func(authType, username, password string) error
+	SendMessageFunc  func(msg *message.Message) error
+	CloseFunc        func() error
 }
 
-func (m *MockSMTPClient) SendMail(addr string, a smtp.Auth, from string, to []string, msg []byte) error {
-	return m.SendMailFunc(addr, a, from, to, msg)
+func (m *MockSMTPClient) Connect(server string, port int) error {
+	return m.ConnectFunc(server, port)
+}
+
+func (m *MockSMTPClient) StartTLS() error {
+	return m.StartTLSFunc()
+}
+
+func (m *MockSMTPClient) Authenticate(authType, username, password string) error {
+	return m.AuthenticateFunc(authType, username, password)
+}
+
+func (m *MockSMTPClient) SendMessage(msg *message.Message) error {
+	return m.SendMessageFunc(msg)
 }
 
 func (m *MockSMTPClient) Close() error {
 	return m.CloseFunc()
 }
 
-func (m *MockSMTPClient) Auth(a smtp.Auth) error {
-	return m.AuthFunc(a)
-}
-
-func (m *MockSMTPClient) Hello(localName string) error {
-	return m.HelloFunc(localName)
-}
-
-func (m *MockSMTPClient) Mail(from string) error {
-	return m.MailFunc(from)
-}
-
-func (m *MockSMTPClient) Rcpt(to string) error {
-	return m.RcptFunc(to)
-}
-
-func (m *MockSMTPClient) Data() (io.WriteCloser, error) {
-	return m.DataFunc()
-}
-
-func (m *MockSMTPClient) Quit() error {
-	return m.QuitFunc()
-}
-
 func TestNewSMTPClient(t *testing.T) {
-	t.Run("Successful connection", func(t *testing.T) {
-		_, err := NewSMTPClient("localhost:25", false)
-		if err != nil {
-			t.Errorf("NewSMTPClient returned an error: %v", err)
-		}
-	})
-}
-
-func TestSend(t *testing.T) {
-	testCases := []struct {
-		name        string
-		mockClient  *MockSMTPClient
-		expectedErr error
+	tests := []struct {
+		name     string
+		hostname string
+		debug    bool
+		want     *SMTPClient
 	}{
 		{
-			name: "Successful send",
-			mockClient: &MockSMTPClient{
-				SendMailFunc: func(addr string, a smtp.Auth, from string, to []string, msg []byte) error {
-					return nil
+			name:     "valid config",
+			hostname: "smtp.example.com",
+			debug:    false,
+			want: &SMTPClient{
+				hostname: "smtp.example.com",
+				debug:    false,
+				retry: RetryConfig{
+					MaxAttempts: 3,
+					Delay:       2 * time.Second,
 				},
+				timeout: 30 * time.Second,
 			},
-			expectedErr: nil,
-		},
-		{
-			name: "SendMail error",
-			mockClient: &MockSMTPClient{
-				SendMailFunc: func(addr string, a smtp.Auth, from string, to []string, msg []byte) error {
-					return errors.New("sendmail error")
-				},
-			},
-			expectedErr: errors.New("sendmail error"),
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := &Client{
-				client: tc.mockClient,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewSMTPClient(tt.hostname, tt.debug)
+			if got.hostname != tt.want.hostname {
+				t.Errorf("NewSMTPClient().hostname = %v, want %v", got.hostname, tt.want.hostname)
 			}
-			err := c.Send("localhost:25", nil, "from@example.com", []string{"to@example.com"}, []byte("test message"))
-			if tc.expectedErr == nil && err != nil {
-				t.Fatalf("Expected no error, but got: %v", err)
+			if got.debug != tt.want.debug {
+				t.Errorf("NewSMTPClient().debug = %v, want %v", got.debug, tt.want.debug)
 			}
-			if tc.expectedErr != nil && (err == nil || err.Error() != tc.expectedErr.Error()) {
-				t.Fatalf("Expected error: %v, but got: %v", tc.expectedErr, err)
+			if got.retry.MaxAttempts != tt.want.retry.MaxAttempts {
+				t.Errorf("NewSMTPClient().retry.MaxAttempts = %v, want %v", got.retry.MaxAttempts, tt.want.retry.MaxAttempts)
+			}
+			if got.retry.Delay != tt.want.retry.Delay {
+				t.Errorf("NewSMTPClient().retry.Delay = %v, want %v", got.retry.Delay, tt.want.retry.Delay)
+			}
+			if got.timeout != tt.want.timeout {
+				t.Errorf("NewSMTPClient().timeout = %v, want %v", got.timeout, tt.want.timeout)
+			}
+		})
+	}
+}
+
+func TestSetRetryConfig(t *testing.T) {
+	client := NewSMTPClient("localhost", false)
+	maxAttempts := 5
+	delay := 3 * time.Second
+
+	client.SetRetryConfig(maxAttempts, delay)
+
+	if client.retry.MaxAttempts != maxAttempts {
+		t.Errorf("SetRetryConfig() MaxAttempts = %v, want %v", client.retry.MaxAttempts, maxAttempts)
+	}
+	if client.retry.Delay != delay {
+		t.Errorf("SetRetryConfig() Delay = %v, want %v", client.retry.Delay, delay)
+	}
+}
+
+func TestSetTimeout(t *testing.T) {
+	client := NewSMTPClient("localhost", false)
+	timeout := 60 * time.Second
+
+	client.SetTimeout(timeout)
+
+	if client.timeout != timeout {
+		t.Errorf("SetTimeout() = %v, want %v", client.timeout, timeout)
+	}
+}
+
+func TestConnect(t *testing.T) {
+	tests := []struct {
+		name    string
+		server  string
+		port    int
+		setup   func(*SMTPClient)
+		wantErr bool
+	}{
+		{
+			name:   "successful connect",
+			server: "smtp.example.com",
+			port:   587,
+			setup: func(c *SMTPClient) {
+				c.retry.MaxAttempts = 1
+				// Mock the connection
+				c.conn = &mockConn{
+					readFunc: func(b []byte) (n int, err error) {
+						copy(b, "220 smtp.example.com ESMTP ready\r\n")
+						return len("220 smtp.example.com ESMTP ready\r\n"), nil
+					},
+					writeFunc: func(b []byte) (n int, err error) {
+						return len(b), nil
+					},
+				}
+			},
+			wantErr: false,
+		},
+		{
+			name:   "connect error",
+			server: "invalid.example.com",
+			port:   587,
+			setup: func(c *SMTPClient) {
+				c.retry.MaxAttempts = 1
+				// Mock the connection to return an error
+				c.conn = &mockConn{
+					readFunc: func(b []byte) (n int, err error) {
+						return 0, errors.New("connection refused")
+					},
+					writeFunc: func(b []byte) (n int, err error) {
+						return 0, errors.New("connection refused")
+					},
+				}
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewSMTPClient("localhost", false)
+			if tt.setup != nil {
+				tt.setup(client)
+			}
+
+			err := client.Connect(tt.server, tt.port)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Connect() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
 func TestClose(t *testing.T) {
-	testCases := []struct {
-		name        string
-		mockClient  *MockSMTPClient
-		expectedErr error
+	tests := []struct {
+		name    string
+		setup   func(*SMTPClient)
+		wantErr bool
 	}{
 		{
-			name: "Successful close",
-			mockClient: &MockSMTPClient{
-				CloseFunc: func() error {
-					return nil
-				},
+			name: "successful close",
+			setup: func(c *SMTPClient) {
+				c.conn = &mockConn{
+					closeFunc: func() error { return nil },
+				}
 			},
-			expectedErr: nil,
+			wantErr: false,
 		},
 		{
-			name: "Close error",
-			mockClient: &MockSMTPClient{
-				CloseFunc: func() error {
-					return errors.New("close error")
-				},
+			name: "close error",
+			setup: func(c *SMTPClient) {
+				c.conn = &mockConn{
+					closeFunc: func() error { return errors.New("close failed") },
+				}
 			},
-			expectedErr: errors.New("close error"),
+			wantErr: true,
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := &Client{
-				client: tc.mockClient,
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := NewSMTPClient("localhost", false)
+			if tt.setup != nil {
+				tt.setup(client)
 			}
-			err := c.Close()
-			if tc.expectedErr == nil && err != nil {
-				t.Fatalf("Expected no error, but got: %v", err)
-			}
-			if tc.expectedErr != nil && (err == nil || err.Error() != tc.expectedErr.Error()) {
-				t.Fatalf("Expected error: %v, but got: %v", tc.expectedErr, err)
+
+			err := client.Close()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Close() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func TestSendRaw(t *testing.T) {
-	testCases := []struct {
-		name        string
-		mockClient  *MockSMTPClient
-		expectedErr error
-	}{
-		{
-			name: "Successful send raw",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: nil,
-		},
-		{
-			name: "Auth error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return errors.New("auth error")
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: errors.New("auth error"),
-		},
-		{
-			name: "Hello error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return errors.New("hello error")
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: errors.New("hello error"),
-		},
-		{
-			name: "Mail error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return errors.New("mail error")
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: errors.New("mail error"),
-		},
-		{
-			name: "Rcpt error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return errors.New("rcpt error")
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: errors.New("rcpt error"),
-		},
-		{
-			name: "Data error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return nil, errors.New("data error")
-				},
-				QuitFunc: func() error {
-					return nil
-				},
-			},
-			expectedErr: errors.New("data error"),
-		},
-		{
-			name: "Quit error",
-			mockClient: &MockSMTPClient{
-				AuthFunc: func(a smtp.Auth) error {
-					return nil
-				},
-				HelloFunc: func(localName string) error {
-					return nil
-				},
-				MailFunc: func(from string) error {
-					return nil
-				},
-				RcptFunc: func(to string) error {
-					return nil
-				},
-				DataFunc: func() (io.WriteCloser, error) {
-					return &mockWriteCloser{}, nil
-				},
-				QuitFunc: func() error {
-					return errors.New("quit error")
-				},
-			},
-			expectedErr: errors.New("quit error"),
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			c := &Client{
-				client: tc.mockClient,
-			}
-			err := c.SendRaw("localhost:25", nil, "from@example.com", []string{"to@example.com"}, []byte("test message"))
-			if tc.expectedErr == nil && err != nil {
-				t.Fatalf("Expected no error, but got: %v", err)
-			}
-			if tc.expectedErr != nil && (err == nil || err.Error() != tc.expectedErr.Error()) {
-				t.Fatalf("Expected error: %v, but got: %v", tc.expectedErr, err)
-			}
-		})
-	}
+// mockConn implements net.Conn interface for testing
+type mockConn struct {
+	closeFunc func() error
+	readFunc  func(b []byte) (n int, err error)
+	writeFunc func(b []byte) (n int, err error)
 }
 
-type mockWriteCloser struct{}
-
-func (mwc *mockWriteCloser) Write(p []byte) (int, error) {
-	return len(p), nil
+func (m *mockConn) Read(b []byte) (n int, err error) {
+	if m.readFunc != nil {
+		return m.readFunc(b)
+	}
+	return 0, nil
 }
 
-func (mwc *mockWriteCloser) Close() error {
+func (m *mockConn) Write(b []byte) (n int, err error) {
+	if m.writeFunc != nil {
+		return m.writeFunc(b)
+	}
+	return len(b), nil
+}
+
+func (m *mockConn) Close() error {
+	if m.closeFunc != nil {
+		return m.closeFunc()
+	}
 	return nil
 }
+
+func (m *mockConn) LocalAddr() net.Addr                { return nil }
+func (m *mockConn) RemoteAddr() net.Addr               { return nil }
+func (m *mockConn) SetDeadline(t time.Time) error      { return nil }
+func (m *mockConn) SetReadDeadline(t time.Time) error  { return nil }
+func (m *mockConn) SetWriteDeadline(t time.Time) error { return nil }
