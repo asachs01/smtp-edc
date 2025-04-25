@@ -1,6 +1,12 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to build'
+        required: true
+        type: string
   push:
     tags:
       - 'v*'
@@ -65,7 +71,6 @@ jobs:
         run: |
           GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${GITHUB_REF#refs/tags/}
 
-      # Add this to your existing release workflow
       - name: Trigger Homebrew update
         uses: peter-evans/repository-dispatch@v3
         with:
