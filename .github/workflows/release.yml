@@ -64,3 +64,12 @@ jobs:
       - name: Publish to Go package registry
         run: |
           GOPROXY=proxy.golang.org go list -m github.com/${{ github.repository }}@${GITHUB_REF#refs/tags/}
+
+      # Add this to your existing release workflow
+      - name: Trigger Homebrew update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.HOMEBREW_TOKEN }}
+          repository: asachs01/homebrew-smtp-edc
+          event-type: update-formula
+          client-payload: '{"release_tag": "${{ github.ref_name }}"}'
