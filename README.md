@@ -201,4 +201,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 For support, please:
 - Check the [issues](https://github.com/asachs/smtp-edc/issues) page
 - Create a new issue if needed
-- Join our [Discussions](https://github.com/asachs/smtp-edc/discussions)
