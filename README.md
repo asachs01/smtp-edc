@@ -1,7 +1,7 @@
 ![SMTP-EDC Logo](./smtp-edc.png)
 
 [![Release](https://github.com/asachs01/smtp-edc/actions/workflows/release.yml/badge.svg)](https://github.com/asachs01/smtp-edc/actions/workflows/release.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/asachs/smtp-edc)](https://goreportcard.com/report/github.com/asachs/smtp-edc)
+[![Go Report Card](https://goreportcard.com/badge/github.com/asachs01/smtp-edc)](https://goreportcard.com/report/github.com/asachs01/smtp-edc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 # SMTP-EDC
