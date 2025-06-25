@@ -59,7 +59,7 @@ brews:
       name: smtp-edc
       branch: main
     test: |
-      system "#{bin}/smtp-edc --version"
+      system "#{bin}/smtp-edc --help"
     install: |
       bin.install "smtp-edc"
 

@@ -51,6 +51,6 @@ class SmtpEdc < Formula
   end
 
   test do
-    system "#{bin}/smtp-edc --version"
+    system "#{bin}/smtp-edc --help"
   end
 end
