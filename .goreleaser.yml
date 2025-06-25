@@ -47,14 +47,36 @@ changelog:
       - '^ci:'
       - '^chore:'
 
+brews:
+  - name: smtp-edc
+    directory: Formula
+    homepage: "https://github.com/asachs01/smtp-edc"
+    description: "A powerful, cross-platform SMTP testing tool written in Go"
+    license: "MIT"
+    repository:
+      owner: asachs01
+      name: smtp-edc
+      branch: main
+    folder: Formula
+    test: |
+      system "#{bin}/smtp-edc --version"
+    install: |
+      bin.install "smtp-edc"
+
 release:
   github:
-    owner: asachs
+    owner: asachs01
     name: smtp-edc
   prerelease: auto
   name_template: "{{ .ProjectName }} {{ .Version }}"
   footer: |
     ## Installation
+
+    ### Using Homebrew
+
+    ```bash
+    brew install asachs01/smtp-edc/smtp-edc
+    ```
 
     ### Manual Installation
 

@@ -30,6 +30,16 @@ A powerful, cross-platform SMTP testing tool written in Go, designed to be a mod
 
 ## 📦 Installation
 
+### Using Homebrew
+
+```bash
+# Add the tap
+brew tap asachs01/smtp-edc
+
+# Install SMTP-EDC
+brew install smtp-edc
+```
+
 ### Using Go Install
 
 ```bash
@@ -39,7 +49,7 @@ go install github.com/asachs/smtp-edc/cmd/smtp-edc@latest
 ### From Source
 
 ```bash
-git clone https://github.com/asachs/smtp-edc.git
+git clone https://github.com/asachs01/smtp-edc.git
 cd smtp-edc
 go build -o smtp-edc cmd/smtp-edc/main.go
 ```
