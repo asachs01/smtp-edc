@@ -5,7 +5,8 @@ before:
     - go mod tidy
 
 builds:
-  - env:
+  - main: ./cmd/smtp-edc
+    env:
       - CGO_ENABLED=0
     goos:
       - linux
@@ -57,7 +58,6 @@ brews:
       owner: asachs01
       name: smtp-edc
       branch: main
-    folder: Formula
     test: |
       system "#{bin}/smtp-edc --version"
     install: |
