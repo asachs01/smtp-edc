@@ -1,0 +1,348 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Setup Project Repository",
+        "description": "Initialize a new Wails v2 project with React/TypeScript frontend and Go backend.",
+        "details": "Use `wails init -n smtp-edc -t react-ts` to scaffold the project. Set up Git repository, .gitignore, and basic README. Ensure Node.js (LTS) and Go (latest stable) are installed. Configure project root with recommended structure: `frontend/`, `backend/`, `build/`.",
+        "testStrategy": "Verify project creation by running `wails dev` and checking for successful build and launch of a blank window.",
+        "priority": "high",
+        "dependencies": [],
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Verify Prerequisites",
+            "description": "Ensure Node.js (LTS) and Go (latest stable) are installed and properly configured on the system.",
+            "dependencies": [],
+            "details": "Run 'node -v' and 'go version' to confirm installations. Use 'wails doctor' to check the environment for Wails compatibility.",
+            "status": "done",
+            "testStrategy": "Both Node.js and Go commands should return version numbers. 'wails doctor' should report no critical issues."
+          },
+          {
+            "id": 2,
+            "title": "Initialize Wails v2 Project with React/TypeScript",
+            "description": "Scaffold a new Wails v2 project using the React/TypeScript template within the existing Go project structure.",
+            "dependencies": [
+              1
+            ],
+            "details": "Run 'wails init -n smtp-edc -t react-ts' in the desired directory. Ensure the new Wails project does not overwrite existing SMTP-EDC code.\n<info added on 2025-06-27T13:40:47.819Z>\nSuccessfully created Wails project structure with React/TypeScript frontend by running the 'wails init' command. Copied the frontend directory, wails.json, and app.go files from the generated project to the main SMTP-EDC project repository. The project structure is now ready for integration with the existing SMTP-EDC Go code.\n</info added on 2025-06-27T13:40:47.819Z>\n<info added on 2025-06-27T13:44:18.895Z>\nSuccessfully completed Wails v2 project initialization. Created main.go with Wails entry point, app.go with SMTP-EDC service layer integration, and updated go.mod with all dependencies. Application builds successfully as 'smtp-edc-ui' binary.\n</info added on 2025-06-27T13:44:18.895Z>",
+            "status": "done",
+            "testStrategy": "Project directories 'frontend/', 'backend/', and 'build/' are created. Existing SMTP-EDC code remains intact."
+          },
+          {
+            "id": 3,
+            "title": "Integrate Existing SMTP-EDC Code",
+            "description": "Merge the existing SMTP-EDC Go code into the Wails 'backend/' directory, preserving all functionality.",
+            "dependencies": [
+              2
+            ],
+            "details": "Move or reference SMTP-EDC source files within the Wails backend structure. Update import paths and module references as needed.",
+            "status": "done",
+            "testStrategy": "SMTP-EDC code compiles and runs within the Wails backend context without errors."
+          },
+          {
+            "id": 4,
+            "title": "Set Up Git Repository and .gitignore",
+            "description": "Initialize a new Git repository for the project, add a .gitignore file, and make the initial commit.",
+            "dependencies": [
+              2
+            ],
+            "details": "Run 'git init' in the project root. Use a .gitignore template suitable for Go, Node.js, and Wails projects. Stage and commit all files.",
+            "status": "in-progress",
+            "testStrategy": "Running 'git status' shows a clean working directory. .gitignore excludes build artifacts and dependencies."
+          },
+          {
+            "id": 5,
+            "title": "Create Basic README and Document Project Structure",
+            "description": "Draft a README file that explains the project purpose, setup instructions, and directory structure.",
+            "dependencies": [
+              4
+            ],
+            "details": "Include sections for prerequisites, installation, running the app, and a description of 'frontend/', 'backend/', and 'build/' directories.",
+            "status": "pending",
+            "testStrategy": "README is present at the project root and provides clear, accurate setup and usage instructions."
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Configure Build and Toolchain",
+        "description": "Set up build configuration, linting, and formatting for both frontend and backend.",
+        "details": "Configure ESLint, Prettier, and TypeScript for frontend. Set up Go modules and vetting tools for backend. Add scripts for build, test, and lint in package.json and Makefile. Use Wails v2 recommended toolchain.",
+        "testStrategy": "Run linting and formatting checks. Ensure build scripts execute without errors.",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Create Wails Service Layer for Go Code",
+        "description": "Wrap existing Go CLI logic in a Wails-compatible service layer.",
+        "details": "Refactor Go code into modular packages. Expose core SMTP functions as methods on structs with Wails bindings. Use `wails generate module` to create JS/TS bindings. Keep YAML config support.",
+        "testStrategy": "Test Go service methods via unit tests. Verify Wails bindings are generated and accessible from frontend.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Define API Contracts",
+        "description": "Define and document API contracts between frontend and backend.",
+        "details": "Create TypeScript interfaces for all backend methods. Document expected request/response formats. Use OpenAPI or similar for documentation if needed.",
+        "testStrategy": "Validate API contracts by manual review and integration tests.",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Implement Main Application Shell",
+        "description": "Build the main application window with navigation and layout.",
+        "details": "Use React with TypeScript. Implement a responsive layout with navigation sidebar. Use Material-UI or Chakra UI for components. Apply design system colors: #FFFFFF (background), #253238 (navigation), #FF7C1A (accent).",
+        "testStrategy": "Test layout and navigation in different window sizes. Verify design system colors are applied.",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Create Connection Configuration Interface",
+        "description": "Build UI for SMTP server connection management.",
+        "details": "Implement form for server address, port, and security options. Use React Hook Form for validation. Store settings in state and sync with backend via Wails bindings.",
+        "testStrategy": "Test form validation and submission. Verify settings are correctly passed to backend.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "Build Message Composition Interface",
+        "description": "Implement message editor with rich text support.",
+        "details": "Use Tiptap or Slate for rich text editing. Support plain text and HTML. Integrate with backend for message assembly. Apply design system typography: Inter/SF Pro/Segoe UI.",
+        "testStrategy": "Test message composition, formatting, and backend integration.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Implement Authentication Configuration Panels",
+        "description": "Add UI for authentication methods (PLAIN, LOGIN, CRAM-MD5, OAuth2).",
+        "details": "Create tabs or accordions for each auth method. Use secure input fields for credentials. Store securely in backend. Support OAuth2 via PKCE flow if needed.",
+        "testStrategy": "Test each auth method. Verify credentials are securely handled and not exposed in frontend.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Add Basic SMTP Testing Functionality",
+        "description": "Enable sending test emails via UI.",
+        "details": "Add send button to message editor. Call backend SMTP send method via Wails bindings. Display success/failure feedback.",
+        "testStrategy": "Test sending emails with various configurations. Verify feedback and error handling.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Create Real-Time SMTP Transaction Display",
+        "description": "Show live SMTP protocol transactions.",
+        "details": "Use WebSocket or Wails event system for real-time updates. Display transaction logs in a dedicated panel. Use JetBrains Mono for code/log display.",
+        "testStrategy": "Test real-time updates during SMTP transactions. Verify log formatting and readability.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 11,
+        "title": "Implement Debug and Logging Interface",
+        "description": "Add UI for viewing and filtering application logs.",
+        "details": "Create log viewer with filtering and search. Use backend log streaming via Wails events. Apply JetBrains Mono for logs.",
+        "testStrategy": "Test log viewing, filtering, and search. Verify real-time updates.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 12,
+        "title": "Add Template Management System",
+        "description": "Enable creation, editing, and selection of email templates.",
+        "details": "Implement template list, editor, and selector. Store templates in backend. Support template variables.",
+        "testStrategy": "Test template creation, editing, and application in message editor.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 13,
+        "title": "Build Attachment Handling with Drag-and-Drop",
+        "description": "Add support for attaching files via drag-and-drop.",
+        "details": "Use react-dropzone for drag-and-drop. Display attached files list. Send attachments via backend.",
+        "testStrategy": "Test file attachment, removal, and sending with emails.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          7
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 14,
+        "title": "Create Configuration Management Interface",
+        "description": "Add UI for importing/exporting and managing app configurations.",
+        "details": "Implement import/export buttons for YAML configs. Use file dialogs via Wails. Validate configs on import.",
+        "testStrategy": "Test config import/export. Verify validation and error handling.",
+        "priority": "medium",
+        "dependencies": [
+          3,
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 15,
+        "title": "Implement Error Handling and Validation",
+        "description": "Add robust error handling and input validation across UI.",
+        "details": "Use React Hook Form for validation. Display user-friendly error messages. Handle backend errors gracefully.",
+        "testStrategy": "Test error scenarios and validation. Verify error messages are clear and actionable.",
+        "priority": "medium",
+        "dependencies": [
+          6,
+          7,
+          8
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 16,
+        "title": "Add Keyboard Shortcuts and Accessibility",
+        "description": "Implement keyboard shortcuts and ensure accessibility compliance.",
+        "details": "Use react-hotkeys-hook for shortcuts. Add ARIA attributes and keyboard navigation. Test with screen readers.",
+        "testStrategy": "Test keyboard shortcuts and accessibility with tools like axe-core.",
+        "priority": "medium",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 17,
+        "title": "Create Help System and Documentation",
+        "description": "Add in-app help and documentation.",
+        "details": "Implement help modal or sidebar. Include user guide and API docs. Link to external resources if needed.",
+        "testStrategy": "Test help navigation and content accuracy.",
+        "priority": "low",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 18,
+        "title": "Implement Theme System",
+        "description": "Add theme support with specified colors.",
+        "details": "Use CSS variables or theme provider for colors: #FFFFFF, #253238, #FF7C1A. Support light/dark mode if desired.",
+        "testStrategy": "Test theme switching and color application.",
+        "priority": "low",
+        "dependencies": [
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 19,
+        "title": "Add Performance Optimizations",
+        "description": "Optimize application startup and bundle size.",
+        "details": "Analyze bundle with webpack-bundle-analyzer. Optimize imports and code splitting. Ensure startup time <3s and bundle size <100MB.",
+        "testStrategy": "Measure startup time and bundle size. Verify targets are met.",
+        "priority": "medium",
+        "dependencies": [
+          2,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 20,
+        "title": "Ensure Cross-Platform Deployment",
+        "description": "Package and test application for Windows, macOS, and Linux.",
+        "details": "Use Wails build commands for each platform. Test installation and execution. Maintain CLI compatibility.",
+        "testStrategy": "Test on all target platforms. Verify CLI and GUI modes work as expected.",
+        "priority": "high",
+        "dependencies": [
+          1,
+          2,
+          19
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-06-27T13:38:17.877Z",
+      "updated": "2025-06-27T13:44:35.736Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

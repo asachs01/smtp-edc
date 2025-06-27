@@ -1,0 +1,66 @@
+# SMTP-EDC Wails UI Conversion PRD
+
+## Product Overview
+Convert SMTP-EDC from a CLI-only tool to a modern cross-platform desktop application using Wails framework. The new GUI will provide an intuitive interface for SMTP testing while maintaining all existing functionality.
+
+## Technical Requirements
+
+### Phase 1: Foundation Setup
+- Initialize Wails v2 project with React/TypeScript frontend
+- Set up project structure and build configuration
+- Create Wails service layer for existing Go code
+- Implement Wails bindings for core SMTP functionality
+- Define API contracts between frontend and backend
+
+### Phase 2: Core UI Development
+- Implement main application shell with navigation
+- Create connection configuration interface
+- Build message composition interface with rich text editor
+- Implement authentication configuration panels
+- Add basic SMTP testing functionality
+
+### Phase 3: Advanced Features
+- Create real-time SMTP transaction display
+- Implement debug and logging interface
+- Add template management system
+- Build attachment handling with drag-and-drop
+- Create configuration management interface
+
+### Phase 4: Polish and Integration
+- Implement error handling and validation
+- Add keyboard shortcuts and accessibility
+- Create help system and documentation
+- Implement theme system with specified colors
+- Add performance optimizations
+
+## Design System
+- Primary Color: #FFFFFF (backgrounds, main text)
+- Secondary Color: #253238 (navigation, headers, borders)
+- Accent Color: #FF7C1A (buttons, highlights, active states)
+- Typography: System fonts (Inter/SF Pro/Segoe UI)
+- Code Display: JetBrains Mono for logs and debugging
+
+## Key Features to Implement
+1. SMTP server connection management
+2. Authentication (PLAIN, LOGIN, CRAM-MD5, OAuth2)
+3. Message composition with templates
+4. Attachment handling
+5. Real-time protocol debugging
+6. Configuration import/export
+7. Test history and results
+8. Cross-platform deployment
+
+## Success Criteria
+- 100% feature parity with CLI version
+- Cross-platform compatibility (Windows, macOS, Linux)
+- Performance equivalent to CLI version
+- Bundle size under 100MB
+- Startup time under 3 seconds
+- Intuitive user interface requiring minimal training
+
+## Technical Constraints
+- Use Wails v2 framework
+- Maintain existing Go codebase with minimal changes
+- Support existing YAML configuration format
+- Ensure secure credential handling
+- Maintain CLI compatibility alongside GUI
