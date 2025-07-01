@@ -162,7 +162,7 @@ func (tv *TLSVerifier) VerifyTLSConnection(serverAddr string, port int) (*TLSInf
 		HandshakeComplete:          state.HandshakeComplete,
 		DidResume:                  state.DidResume,
 		NegotiatedProtocol:         state.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual: state.NegotiatedProtocolIsMutual,
+		NegotiatedProtocolIsMutual: true, // Always true in Go 1.16+
 	}
 
 	// Verify certificates
@@ -262,7 +262,7 @@ func (tv *TLSVerifier) TestSMTPSTARTTLS(serverAddr string, port int) (*TLSInfo, 
 		HandshakeComplete:          state.HandshakeComplete,
 		DidResume:                  state.DidResume,
 		NegotiatedProtocol:         state.NegotiatedProtocol,
-		NegotiatedProtocolIsMutual: state.NegotiatedProtocolIsMutual,
+		NegotiatedProtocolIsMutual: true, // Always true in Go 1.16+
 	}
 
 	// Verify certificates
@@ -463,7 +463,7 @@ func (tv *TLSVerifier) generateRecommendations(state *tls.ConnectionState, certE
 		cert := state.PeerCertificates[0]
 
 		// Check certificate expiration
-		daysUntilExpiry := int(cert.NotAfter.Sub(time.Now()).Hours() / 24)
+		daysUntilExpiry := int(time.Until(cert.NotAfter).Hours() / 24)
 		if daysUntilExpiry < 30 {
 			recommendations = append(recommendations, fmt.Sprintf("Certificate expires in %d days - renew soon", daysUntilExpiry))
 		}

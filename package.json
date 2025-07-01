@@ -1,0 +1,30 @@
+{
+  "name": "smtp-edc",
+  "version": "0.1.0",
+  "description": "SMTP Enhanced Diagnostic and Configuration tool with Wails UI",
+  "scripts": {
+    "dev": "make dev",
+    "build": "make build",
+    "wails:build": "make wails-build",
+    "wails:dev": "make wails-dev",
+    "lint": "make lint",
+    "format": "make format",
+    "test": "make test",
+    "clean": "make clean",
+    "install": "make install",
+    "validate": "make validate",
+    "check": "make check"
+  },
+  "keywords": [
+    "smtp",
+    "email",
+    "testing",
+    "wails",
+    "go",
+    "react",
+    "typescript"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "private": true
+}

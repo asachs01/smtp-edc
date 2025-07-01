@@ -1,0 +1,758 @@
+openapi: 3.0.3
+info:
+  title: SMTP-EDC API
+  description: |
+    SMTP Email Delivery and Configuration (SMTP-EDC) API provides comprehensive
+    email testing, configuration management, and template functionality through
+    a Wails-based desktop application.
+
+    This API exposes 19 methods across three main service areas:
+    - Configuration Management (7 methods)
+    - SMTP Operations (7 methods)
+    - Template Management (5 methods)
+  version: 1.0.0
+  contact:
+    name: SMTP-EDC Project
+    url: https://github.com/asachs/smtp-edc
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: "wails://localhost"
+    description: Wails Desktop Application
+
+tags:
+  - name: Configuration
+    description: SMTP configuration management operations
+  - name: SMTP
+    description: Email sending and validation operations
+  - name: Templates
+    description: Email template management operations
+
+paths:
+  /config/current:
+    get:
+      tags: [Configuration]
+      summary: Get Current Configuration
+      description: Returns the currently loaded SMTP configuration
+      operationId: getCurrentConfig
+      responses:
+        '200':
+          description: Current configuration data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigData'
+
+  /config/load:
+    post:
+      tags: [Configuration]
+      summary: Load Configuration
+      description: Loads configuration from a YAML file
+      operationId: loadConfig
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+                  description: Path to config file (optional)
+      responses:
+        '200':
+          description: Loaded configuration data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConfigData'
+        '400':
+          description: Invalid file path or corrupted config
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/save:
+    post:
+      tags: [Configuration]
+      summary: Save Configuration
+      description: Saves configuration to a YAML file
+      operationId: saveConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [config]
+              properties:
+                config:
+                  $ref: '#/components/schemas/ConfigData'
+                filename:
+                  type: string
+                  description: Target file path (optional)
+      responses:
+        '200':
+          description: Configuration saved successfully
+        '400':
+          description: Invalid configuration data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/validate:
+    post:
+      tags: [Configuration]
+      summary: Validate Configuration
+      description: Validates configuration structure and required fields
+      operationId: validateConfig
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigData'
+      responses:
+        '200':
+          description: Configuration is valid
+        '400':
+          description: Configuration validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/default-path:
+    get:
+      tags: [Configuration]
+      summary: Get Default Config Path
+      description: Returns the default configuration file path
+      operationId: getDefaultConfigPath
+      responses:
+        '200':
+          description: Default config file path
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  path:
+                    type: string
+                    example: "~/.smtp-edc/config.yaml"
+
+  /config/list:
+    get:
+      tags: [Configuration]
+      summary: List Configuration Files
+      description: Lists available configuration files in the config directory
+      operationId: listConfigFiles
+      responses:
+        '200':
+          description: List of available configuration files
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      type: string
+
+  /smtp/test-connection:
+    post:
+      tags: [SMTP]
+      summary: Test Connection
+      description: Tests SMTP server connection with provided configuration
+      operationId: testConnection
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfigData'
+      responses:
+        '200':
+          description: Connection test results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConnectionResult'
+
+  /smtp/send-email:
+    post:
+      tags: [SMTP]
+      summary: Send Email
+      description: Sends an email using the specified configuration and message details
+      operationId: sendEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailRequest'
+      responses:
+        '200':
+          description: Email send result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendResult'
+        '400':
+          description: Invalid email request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /smtp/validate-email:
+    post:
+      tags: [SMTP]
+      summary: Validate Email Address
+      description: Validates a single email address syntax and optionally MX records
+      operationId: validateEmailAddress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "test@example.com"
+      responses:
+        '200':
+          description: Email validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendResult'
+
+  /smtp/validate-email-list:
+    post:
+      tags: [SMTP]
+      summary: Validate Email List
+      description: Validates multiple email addresses with optional MX record checking
+      operationId: validateEmailList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [emails, validateMX]
+              properties:
+                emails:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  example: ["valid@example.com", "test@domain.com"]
+                validateMX:
+                  type: boolean
+                  description: Whether to perform MX record validation
+                  example: true
+      responses:
+        '200':
+          description: Email list validation results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendResult'
+
+  /smtp/auth-stats:
+    get:
+      tags: [SMTP]
+      summary: Get Authentication Statistics
+      description: Returns authentication statistics and connection metrics
+      operationId: getAuthStats
+      responses:
+        '200':
+          description: Authentication statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /smtp/debug-mode:
+    get:
+      tags: [SMTP]
+      summary: Get Debug Mode Status
+      description: Returns current debug mode status
+      operationId: getDebugMode
+      responses:
+        '200':
+          description: Debug mode status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enabled:
+                    type: boolean
+    post:
+      tags: [SMTP]
+      summary: Set Debug Mode
+      description: Enables or disables debug mode for SMTP operations
+      operationId: setDebugMode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled:
+                  type: boolean
+                  description: Whether to enable debug mode
+      responses:
+        '200':
+          description: Debug mode updated successfully
+
+  /templates:
+    get:
+      tags: [Templates]
+      summary: List Templates
+      description: Lists all available email templates
+      operationId: listTemplates
+      responses:
+        '200':
+          description: List of available templates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  templates:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TemplateInfo'
+
+  /templates/{name}:
+    get:
+      tags: [Templates]
+      summary: Load Template
+      description: Loads a specific template by name
+      operationId: loadTemplate
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Template name
+      responses:
+        '200':
+          description: Template loaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResult'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags: [Templates]
+      summary: Save Template
+      description: Saves a template with the specified name and content
+      operationId: saveTemplate
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Template name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  description: Template content with placeholders
+      responses:
+        '200':
+          description: Template saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResult'
+        '400':
+          description: Invalid template content
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags: [Templates]
+      summary: Delete Template
+      description: Deletes a template by name
+      operationId: deleteTemplate
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+          description: Template name
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResult'
+        '404':
+          description: Template not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /templates/execute:
+    post:
+      tags: [Templates]
+      summary: Execute Template
+      description: Executes a template with provided data, returning a ready-to-send email request
+      operationId: executeTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [templateName, subjectTemplate, data]
+              properties:
+                templateName:
+                  type: string
+                  description: Name of the template to execute
+                subjectTemplate:
+                  type: string
+                  description: Subject line template
+                data:
+                  $ref: '#/components/schemas/TemplateData'
+      responses:
+        '200':
+          description: Template executed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EmailRequest'
+        '400':
+          description: Template execution failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /templates/default:
+    get:
+      tags: [Templates]
+      summary: Get Default Templates
+      description: Returns a map of default template names and content
+      operationId: getDefaultTemplates
+      responses:
+        '200':
+          description: Default templates
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: string
+
+    post:
+      tags: [Templates]
+      summary: Create Default Templates
+      description: Creates default email templates in the templates directory
+      operationId: createDefaultTemplates
+      responses:
+        '200':
+          description: Default templates created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResult'
+
+components:
+  schemas:
+    ConfigData:
+      type: object
+      required: [server, port, username, password, authType, startTLS, skipVerify]
+      properties:
+        server:
+          type: string
+          description: SMTP server hostname
+          example: "smtp.gmail.com"
+        port:
+          type: integer
+          description: SMTP server port
+          example: 587
+          minimum: 1
+          maximum: 65535
+        username:
+          type: string
+          description: SMTP username/email
+          example: "user@gmail.com"
+        password:
+          type: string
+          description: SMTP password or app password
+          format: password
+        authType:
+          $ref: '#/components/schemas/AuthType'
+        startTLS:
+          type: boolean
+          description: Whether to use STARTTLS
+          example: true
+        skipVerify:
+          type: boolean
+          description: Whether to skip TLS certificate verification
+          example: false
+        templates:
+          type: object
+          additionalProperties:
+            type: string
+          description: Template name to path mappings
+
+    AuthType:
+      type: string
+      enum: [PLAIN, LOGIN, CRAM-MD5, OAUTH2, XOAUTH2, NONE]
+      description: SMTP authentication method
+      example: "PLAIN"
+
+    EmailRequest:
+      type: object
+      required: [from, to, subject]
+      properties:
+        config:
+          $ref: '#/components/schemas/ConfigData'
+          description: SMTP configuration (optional if using default)
+        from:
+          type: string
+          format: email
+          description: Sender email address
+          example: "sender@example.com"
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Recipient email addresses
+          example: ["recipient@example.com"]
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: CC recipients
+          example: []
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: BCC recipients
+          example: []
+        subject:
+          type: string
+          description: Email subject line
+          example: "Test Email"
+        body:
+          type: string
+          description: Plain text email body
+          example: "This is a test email from SMTP-EDC"
+        htmlBody:
+          type: string
+          description: HTML email body
+          example: "<h1>Test Email</h1><p>This is a test email from SMTP-EDC</p>"
+        attachments:
+          type: array
+          items:
+            type: string
+          description: File paths of attachments
+          example: []
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+          description: Custom email headers
+          example: {"X-Priority": "1"}
+
+    ConnectionResult:
+      type: object
+      required: [success, message, timestamp]
+      properties:
+        success:
+          type: boolean
+          description: Whether the connection was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable result message
+          example: "Successfully connected to SMTP server"
+        error:
+          type: string
+          description: Error message if connection failed
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the connection test
+          example: "2024-01-15T10:30:00Z"
+        duration:
+          type: number
+          description: Connection duration in milliseconds
+          example: 250
+        capabilities:
+          type: array
+          items:
+            type: string
+          description: SMTP server capabilities
+          example: ["STARTTLS", "AUTH PLAIN LOGIN"]
+
+    SendResult:
+      type: object
+      required: [success, message, timestamp]
+      properties:
+        success:
+          type: boolean
+          description: Whether the operation was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable result message
+          example: "Email sent successfully"
+        error:
+          type: string
+          description: Error message if operation failed
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp of the operation
+          example: "2024-01-15T10:30:00Z"
+        messageId:
+          type: string
+          description: Email message ID (for sent emails)
+          example: "<abc123@example.com>"
+
+    TemplateData:
+      type: object
+      required: [from, to, subject, data]
+      properties:
+        from:
+          type: string
+          format: email
+          description: Sender email address
+          example: "noreply@company.com"
+        to:
+          type: array
+          items:
+            type: string
+            format: email
+          description: Recipient email addresses
+          example: ["user@example.com"]
+        cc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: CC recipients
+          example: []
+        bcc:
+          type: array
+          items:
+            type: string
+            format: email
+          description: BCC recipients
+          example: []
+        subject:
+          type: string
+          description: Email subject (will be populated by template)
+          example: ""
+        data:
+          type: object
+          additionalProperties: true
+          description: Template variables
+          example:
+            Name: "John Doe"
+            Company: "ACME Corp"
+            ActivationLink: "https://example.com/activate/abc123"
+
+    TemplateResult:
+      type: object
+      required: [success, message]
+      properties:
+        success:
+          type: boolean
+          description: Whether the operation was successful
+          example: true
+        message:
+          type: string
+          description: Human-readable result message
+          example: "Template loaded successfully"
+        error:
+          type: string
+          description: Error message if operation failed
+        content:
+          type: string
+          description: Template content (for load operations)
+        path:
+          type: string
+          description: Template file path
+          example: "/templates/welcome-email.tmpl"
+
+    TemplateInfo:
+      type: object
+      required: [name, path, size, modified]
+      properties:
+        name:
+          type: string
+          description: Template name
+          example: "welcome-email"
+        path:
+          type: string
+          description: Template file path
+          example: "/templates/welcome-email.tmpl"
+        size:
+          type: integer
+          description: Template file size in bytes
+          example: 1024
+        modified:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+          example: "2024-01-15T09:15:00Z"
+
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          description: Error message
+          example: "Invalid email address format"
+        code:
+          type: string
+          description: Error code for programmatic handling
+          example: "INVALID_EMAIL"
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details

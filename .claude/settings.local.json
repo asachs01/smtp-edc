@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(task-master:*)",
+      "Bash(find:*)",
+      "Bash(ls:*)",
+      "Bash(cp:*)",
+      "Bash(wails generate:*)",
+      "Bash(wails build:*)",
+      "Bash(make:*)",
+      "Bash(open:*)"
+    ],
+    "deny": []
+  }
+}

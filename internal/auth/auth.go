@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/base64"
 	"fmt"
+	"strings"
 )
 
 // Authenticator defines the interface for SMTP authentication methods
@@ -29,7 +30,8 @@ func Base64Decode(s string) (string, error) {
 
 // NewAuthenticator creates a new authenticator based on the type
 func NewAuthenticator(authType string) (Authenticator, error) {
-	switch authType {
+	// Convert to lowercase for case-insensitive comparison
+	switch strings.ToLower(authType) {
 	case "plain":
 		return &PlainAuthenticator{}, nil
 	case "login":

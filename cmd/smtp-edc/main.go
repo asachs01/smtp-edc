@@ -1,3 +1,6 @@
+//go:build cli
+// +build cli
+
 package main
 
 import (
@@ -9,14 +12,9 @@ import (
 	"time"
 
 	"github.com/asachs/smtp-edc/internal/client"
-	"github.com/asachs/smtp-edc/internal/config"
 	"github.com/asachs/smtp-edc/internal/message"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-)
-
-var (
-	cfg *config.SMTPConfig
 )
 
 func init() {

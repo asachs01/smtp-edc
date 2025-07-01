@@ -4,31 +4,26 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/asachs01/smtp-edc)](https://goreportcard.com/report/github.com/asachs01/smtp-edc)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# SMTP-EDC
+# SMTP-EDC (SMTP Enhanced Diagnostics Client)
 
-A powerful, cross-platform SMTP testing tool written in Go, designed to be a modern alternative to Swaks. SMTP-EDC provides comprehensive SMTP testing capabilities with a focus on ease of use and detailed debugging information.
+SMTP-EDC is a powerful, feature-rich SMTP testing tool written in Go, similar to SWAKS (SWiss Army Knife for SMTP). It provides both a command-line interface and a modern desktop application built with Wails for comprehensive SMTP server testing and email diagnostics.
 
-## 🚀 Features
+## Features
 
-- **SMTP Testing**
-  - Basic SMTP transaction testing
-  - Support for multiple authentication methods (PLAIN, LOGIN, CRAM-MD5)
-  - TLS/STARTTLS support with configurable security options
-  - Custom headers and MIME support
-  - Attachment handling
+### Core SMTP Testing
+- **Multiple Authentication Methods**: PLAIN, LOGIN, CRAM-MD5, OAuth2
+- **Comprehensive Connection Testing**: StartTLS, SSL/TLS, plain connections
+- **Message Composition**: Text and HTML emails with attachment support
+- **Template System**: Predefined message templates for testing scenarios
+- **Advanced Diagnostics**: Detailed connection logs and error reporting
+- **Rate Limiting**: Built-in protection against abuse
+- **Security Features**: Credential management and secure storage
 
-- **Debugging & Analysis**
-  - Detailed protocol interaction logging
-  - Verbose mode for transaction details
-  - Debug mode for low-level protocol analysis
-  - Error reporting with context
+### User Interfaces
+1. **Command Line Interface (CLI)**: Traditional terminal-based interface for automation and scripting
+2. **Desktop GUI**: Modern cross-platform desktop application built with Wails v2 and React/TypeScript
 
-- **Cross-Platform**
-  - Native support for Windows, macOS, and Linux
-  - Consistent behavior across platforms
-  - No external dependencies
-
-## 📦 Installation
+## Installation
 
 ### Using Homebrew
 
@@ -49,168 +44,158 @@ go install github.com/asachs/smtp-edc/cmd/smtp-edc@latest
 ### From Source
 
 ```bash
-git clone https://github.com/asachs01/smtp-edc.git
+git clone https://github.com/asachs/smtp-edc.git
 cd smtp-edc
-go build -o smtp-edc cmd/smtp-edc/main.go
+go build -o smtp-edc cmd/smtp-edc/main.go  # CLI version
 ```
 
-## 🛠️ Usage
-
-### Basic Email Test
-
+### Building the Desktop Application
 ```bash
-smtp-edc --server smtp.example.com \
-         --from sender@example.com \
-         --to recipient@example.com \
-         --subject "Test Email" \
-         --body "This is a test email"
+# Install Wails (if not already installed)
+go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+# Build the desktop application
+wails build
+
+# Or for development
+wails dev
 ```
 
-### With Authentication
+## Quick Start
 
+### Command Line Usage
 ```bash
-smtp-edc --server smtp.example.com \
-         --port 587 \
-         --from sender@example.com \
-         --to recipient@example.com \
-         --auth plain \
-         --username user \
-         --password pass
+# Basic SMTP connection test
+./smtp-edc -server smtp.gmail.com -port 587 -username your@email.com -password yourpassword
+
+# Send a test email
+./smtp-edc -server smtp.gmail.com -port 587 -username your@email.com -password yourpassword \\
+  -from your@email.com -to recipient@example.com -subject "Test Email" -body "This is a test."
+
+# Test with STARTTLS
+./smtp-edc -server smtp.gmail.com -port 587 -starttls -username your@email.com -password yourpassword
 ```
 
-### With TLS/STARTTLS
+### Desktop Application
+1. Launch the application: `./smtp-edc-ui` (or use `wails dev` for development)
+2. Configure your SMTP connection settings
+3. Compose and send test messages
+4. View detailed connection logs and diagnostics
 
-```bash
-smtp-edc --server smtp.example.com \
-         --port 587 \
-         --from sender@example.com \
-         --to recipient@example.com \
-         --starttls \
-         --skip-verify  # Skip certificate verification (not recommended for production)
-```
+## Configuration
 
-### With Attachments
+SMTP-EDC supports configuration via:
+- Command line flags
+- YAML configuration files
+- Environment variables
+- GUI settings (desktop application)
 
-```bash
-smtp-edc --server smtp.example.com \
-         --from sender@example.com \
-         --to recipient@example.com \
-         --attach /path/to/file1.txt \
-         --attach /path/to/file2.pdf
-```
-
-### Debug Mode
-
-```bash
-smtp-edc --server smtp.example.com \
-         --from sender@example.com \
-         --to recipient@example.com \
-         --debug
-```
-
-## ⚙️ Configuration
-
-SMTP-EDC can be configured using command-line arguments or a configuration file (`smtp-edc.yaml`). The configuration file supports all command-line options in YAML format.
-
-Example configuration file:
-
+### Example Configuration File
 ```yaml
-server: smtp.example.com
+server: smtp.gmail.com
 port: 587
-from: sender@example.com
-to:
-  - recipient1@example.com
-  - recipient2@example.com
-auth_type: plain
-username: user
-password: pass
+username: your@email.com
+password: yourpassword
+auth_type: PLAIN
 starttls: true
 skip_verify: false
 templates:
-  welcome: |
-    Dear {{.Name}},
-    Welcome to our service!
+  test: "This is a test email from SMTP-EDC"
 ```
 
-## 🔍 Troubleshooting
-
-### Common Issues
-
-1. **Connection Refused**
-   - Verify the server address and port
-   - Check firewall settings
-   - Ensure the SMTP server is running
-
-2. **Authentication Failed**
-   - Verify username and password
-   - Check if the correct authentication method is used
-   - Ensure the account is not locked
-
-3. **TLS Handshake Failed**
-   - Check if STARTTLS is supported by the server
-   - Verify certificate validity
-   - Try with `--skip-verify` for testing
-
-### Debugging Tips
-
-- Use `--verbose` for detailed transaction information
-- Use `--debug` for protocol-level debugging
-- Check server logs for additional context
-
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 smtp-edc/
-├── cmd/
-│   └── smtp-edc/          # Main application entry point
-│       └── main.go
+├── cmd/smtp-edc/           # CLI application entry point
+├── main.go                 # Wails desktop application entry point
+├── app.go                  # Wails backend service layer
+├── frontend/               # React/TypeScript frontend for desktop app
 ├── internal/
-│   ├── client/            # SMTP client implementation
-│   ├── message/           # Email message handling
-│   ├── auth/              # Authentication methods
-│   └── transport/         # Network transport layer
-├── pkg/
-│   ├── smtp/              # SMTP protocol implementation
-│   └── utils/             # Utility functions
-├── docs/                  # Documentation
-├── scripts/               # Build and deployment scripts
-└── plans/                 # Project planning documents
+│   ├── auth/              # Authentication implementations
+│   ├── client/            # SMTP client logic
+│   ├── config/            # Configuration management
+│   ├── message/           # Message composition and templates
+│   └── security/          # Security and logging features
+├── docs/                  # Comprehensive documentation
+└── wails.json            # Wails project configuration
 ```
 
-## 📝 Contributing
+## Development
 
-We welcome contributions! Please follow these steps:
+### Prerequisites
+- Go 1.21+
+- Node.js 16+ (for desktop app frontend)
+- Wails v2 (for desktop app development)
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
-
-### Development Setup
-
+### Development Workflow
 ```bash
-git clone https://github.com/asachs/smtp-edc.git
-cd smtp-edc
+# Install dependencies
 go mod download
+cd frontend && npm install
+
+# Run desktop app in development mode
+wails dev
+
+# Build for production
+wails build
+
+# Run tests
 go test ./...
 ```
 
-## 📄 License
+### Color Theme
+The desktop application uses a carefully chosen color palette:
+- **Primary**: #FFFFFF (White)
+- **Secondary**: #253238 (Dark Gray-Blue)
+- **Accent**: #FF7C1A (Orange)
+
+## Documentation
+
+Comprehensive documentation is available in the `docs/` directory:
+- [Wails UI Conversion Plan](docs/WAILS_UI_CONVERSION_PLAN.md)
+- [Product Requirements Document](docs/WAILS_UI_PRD.md)
+- [SMTP Security Guide](docs/SMTP_SECURITY_GUIDE.md)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)
+- [Comprehensive README](docs/COMPREHENSIVE_README.md)
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## Comparison with SWAKS
 
-- Inspired by Swaks
-- Built with Go
-- Community contributions
+SMTP-EDC provides similar functionality to SWAKS with several enhancements:
+- Modern Go implementation with better performance
+- Cross-platform desktop GUI
+- Enhanced authentication support including OAuth2
+- Built-in security features and rate limiting
+- Comprehensive logging and diagnostics
+- Template system for common testing scenarios
 
-## 📞 Support
+## Roadmap
 
-For support, please:
-- Check the [issues](https://github.com/asachs/smtp-edc/issues) page
-- Create a new issue if needed
+- [ ] Enhanced OAuth2 support for major email providers
+- [ ] Advanced message templates and scripting
+- [ ] Bulk email testing capabilities
+- [ ] REST API for automation
+- [ ] Docker containerization
+- [ ] Package managers distribution (Homebrew, Chocolatey, etc.)
+
+## Support
+
+For issues, feature requests, or questions:
+- Open an issue on GitHub
+- Check the [Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)
+- Review the comprehensive documentation
 
 # Homebrew Tap for SMTP-EDC
 

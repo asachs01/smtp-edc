@@ -3,162 +3,166 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
-	"github.com/asachs/smtp-edc/internal/client"
-	"github.com/asachs/smtp-edc/internal/config"
-	"github.com/asachs/smtp-edc/internal/message"
+	"github.com/asachs/smtp-edc/internal/services"
 )
 
 // App struct
 type App struct {
-	ctx    context.Context
-	client *client.SMTPClient
+	ctx             context.Context
+	configService   *services.ConfigService
+	smtpService     *services.SMTPService
+	templateService *services.TemplateService
 }
 
 // NewApp creates a new App application struct
 func NewApp() *App {
-	return &App{}
+	hostname, _ := os.Hostname()
+	if hostname == "" {
+		hostname = "smtp-edc-desktop"
+	}
+
+	return &App{
+		configService:   services.NewConfigService(),
+		smtpService:     services.NewSMTPService(hostname, false),
+		templateService: services.NewTemplateService(),
+	}
 }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
+// startup is called when the app starts. The context provided
+// is the same as the one passed to wails.Run
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 }
 
-// SMTPConnectionConfig represents SMTP connection configuration
-type SMTPConnectionConfig struct {
-	Server     string `json:"server"`
-	Port       int    `json:"port"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	AuthType   string `json:"authType"`
-	StartTLS   bool   `json:"startTLS"`
-	SkipVerify bool   `json:"skipVerify"`
+// Greet returns a greeting for the given name
+func (a *App) Greet(name string) string {
+	trimmedName := strings.TrimSpace(name)
+	if trimmedName == "" {
+		return "Hello, it's nice to meet you!"
+	}
+	return fmt.Sprintf("Hello %s, welcome to SMTP-EDC!", trimmedName)
 }
 
-// EmailMessage represents an email message
-type EmailMessage struct {
-	From        string   `json:"from"`
-	To          []string `json:"to"`
-	Cc          []string `json:"cc"`
-	Bcc         []string `json:"bcc"`
-	Subject     string   `json:"subject"`
-	Body        string   `json:"body"`
-	HTMLBody    string   `json:"htmlBody"`
-	Attachments []string `json:"attachments"`
+// Configuration Methods
+
+// LoadConfig loads configuration from file
+func (a *App) LoadConfig(filename string) (*services.ConfigData, error) {
+	return a.configService.LoadConfig(filename)
 }
 
-// TestResult represents the result of an SMTP test
-type TestResult struct {
-	Success   bool   `json:"success"`
-	Message   string `json:"message"`
-	Error     string `json:"error,omitempty"`
-	Timestamp string `json:"timestamp"`
+// SaveConfig saves configuration to file
+func (a *App) SaveConfig(config *services.ConfigData, filename string) error {
+	return a.configService.SaveConfig(config, filename)
 }
 
-// TestConnection tests the SMTP connection with given configuration
-func (a *App) TestConnection(connectionConfig SMTPConnectionConfig) TestResult {
-	smtpConfig := &config.SMTPConfig{
-		Server:     connectionConfig.Server,
-		Port:       connectionConfig.Port,
-		Username:   connectionConfig.Username,
-		Password:   connectionConfig.Password,
-		AuthType:   connectionConfig.AuthType,
-		StartTLS:   connectionConfig.StartTLS,
-		SkipVerify: connectionConfig.SkipVerify,
-	}
-
-	client := client.NewSMTPClient("localhost", false) // hostname, debug
-
-	// Test the connection
-	err := client.Connect(smtpConfig.Server, smtpConfig.Port)
-	if err != nil {
-		return TestResult{
-			Success: false,
-			Error:   fmt.Sprintf("Connection failed: %v", err),
-		}
-	}
-	defer client.Close()
-
-	return TestResult{
-		Success: true,
-		Message: "Connection successful",
-	}
+// ValidateConfig validates configuration data
+func (a *App) ValidateConfig(config *services.ConfigData) error {
+	return a.configService.ValidateConfig(config)
 }
 
-// SendEmail sends an email using the configured SMTP settings
-func (a *App) SendEmail(smtpConfig SMTPConnectionConfig, email EmailMessage) TestResult {
-	cfg := &config.SMTPConfig{
-		Server:     smtpConfig.Server,
-		Port:       smtpConfig.Port,
-		Username:   smtpConfig.Username,
-		Password:   smtpConfig.Password,
-		AuthType:   smtpConfig.AuthType,
-		StartTLS:   smtpConfig.StartTLS,
-		SkipVerify: smtpConfig.SkipVerify,
-	}
-
-	client := client.NewSMTPClient("localhost", false) // hostname, debug
-
-	// Connect to server
-	err := client.Connect(cfg.Server, cfg.Port)
-	if err != nil {
-		return TestResult{
-			Success: false,
-			Error:   fmt.Sprintf("Connection failed: %v", err),
-		}
-	}
-	defer client.Close()
-
-	// Create message
-	msg := &message.Message{
-		From:     email.From,
-		To:       email.To,
-		Cc:       email.Cc,
-		Bcc:      email.Bcc,
-		Subject:  email.Subject,
-		Body:     email.Body,
-		HTMLBody: email.HTMLBody,
-	}
-
-	// Add attachments if any
-	for _, attachment := range email.Attachments {
-		if err := msg.AddAttachment(attachment); err != nil {
-			return TestResult{
-				Success: false,
-				Error:   fmt.Sprintf("Failed to add attachment %s: %v", attachment, err),
-			}
-		}
-	}
-
-	// Send email
-	err = client.SendMessage(msg)
-	if err != nil {
-		return TestResult{
-			Success: false,
-			Error:   fmt.Sprintf("Failed to send email: %v", err),
-		}
-	}
-
-	return TestResult{
-		Success: true,
-		Message: "Email sent successfully",
-	}
+// GetCurrentConfig returns the current configuration
+func (a *App) GetCurrentConfig() *services.ConfigData {
+	return a.configService.GetCurrentConfig()
 }
 
-// ValidateEmailAddress validates an email address
-func (a *App) ValidateEmailAddress(email string) TestResult {
-	err := message.ValidateEmail(email)
-	if err != nil {
-		return TestResult{
-			Success: false,
-			Error:   fmt.Sprintf("Invalid email address: %v", err),
-		}
-	}
+// GetDefaultConfigPath returns the default config file path
+func (a *App) GetDefaultConfigPath() string {
+	return a.configService.GetDefaultConfigPath()
+}
 
-	return TestResult{
-		Success: true,
-		Message: "Email address is valid",
-	}
+// ListConfigFiles lists available configuration files
+func (a *App) ListConfigFiles() ([]string, error) {
+	return a.configService.ListConfigFiles()
+}
+
+// SMTP Methods
+
+// TestConnection tests SMTP server connection and capabilities
+func (a *App) TestConnection(config *services.ConfigData) *services.ConnectionResult {
+	return a.smtpService.TestConnection(config)
+}
+
+// SendEmail sends an email using the provided configuration and message
+func (a *App) SendEmail(emailReq *services.EmailRequest) *services.SendResult {
+	return a.smtpService.SendEmail(emailReq)
+}
+
+// ValidateEmailAddress validates a single email address
+func (a *App) ValidateEmailAddress(email string) *services.SendResult {
+	return a.smtpService.ValidateEmailAddress(email)
+}
+
+// ValidateEmailList validates a list of email addresses
+func (a *App) ValidateEmailList(emails []string, validateMX bool) *services.SendResult {
+	return a.smtpService.ValidateEmailList(emails, validateMX)
+}
+
+// GetAuthStats returns authentication statistics
+func (a *App) GetAuthStats() map[string]interface{} {
+	return a.smtpService.GetAuthStats()
+}
+
+// SetDebugMode enables or disables debug mode
+func (a *App) SetDebugMode(debug bool) {
+	a.smtpService.SetDebugMode(debug)
+}
+
+// GetDebugMode returns the current debug mode setting
+func (a *App) GetDebugMode() bool {
+	return a.smtpService.GetDebugMode()
+}
+
+// Template Methods
+
+// ListTemplates lists available email templates
+func (a *App) ListTemplates() ([]*services.TemplateInfo, error) {
+	return a.templateService.ListTemplates()
+}
+
+// LoadTemplate loads and parses an email template
+func (a *App) LoadTemplate(templateName string) (*services.TemplateResult, error) {
+	return a.templateService.LoadTemplate(templateName)
+}
+
+// SaveTemplate saves a template to the template directory
+func (a *App) SaveTemplate(templateName, content string) (*services.TemplateResult, error) {
+	return a.templateService.SaveTemplate(templateName, content)
+}
+
+// DeleteTemplate deletes a template from the template directory
+func (a *App) DeleteTemplate(templateName string) (*services.TemplateResult, error) {
+	return a.templateService.DeleteTemplate(templateName)
+}
+
+// ExecuteTemplate processes a template with provided data
+func (a *App) ExecuteTemplate(templateName, subjectTemplate string, templateData *services.TemplateData) (*services.EmailRequest, error) {
+	return a.templateService.ExecuteTemplate(templateName, subjectTemplate, templateData)
+}
+
+// ValidateTemplate validates template syntax and variables
+func (a *App) ValidateTemplate(content string) (*services.TemplateResult, error) {
+	return a.templateService.ValidateTemplate(content)
+}
+
+// GetDefaultTemplates returns a list of default template examples
+func (a *App) GetDefaultTemplates() map[string]string {
+	return a.templateService.GetDefaultTemplates()
+}
+
+// CreateDefaultTemplates creates default template files
+func (a *App) CreateDefaultTemplates() (*services.TemplateResult, error) {
+	return a.templateService.CreateDefaultTemplates()
+}
+
+// SetTemplateDirectory sets the template directory path
+func (a *App) SetTemplateDirectory(dir string) {
+	a.templateService.SetTemplateDirectory(dir)
+}
+
+// GetTemplateDirectory returns the current template directory
+func (a *App) GetTemplateDirectory() string {
+	return a.templateService.GetTemplateDirectory()
 }
