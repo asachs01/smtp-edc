@@ -8,6 +8,8 @@ builds:
   - main: ./cmd/smtp-edc
     env:
       - CGO_ENABLED=0
+    tags:
+      - cli
     goos:
       - linux
       - darwin
@@ -15,9 +17,6 @@ builds:
     goarch:
       - amd64
       - arm64
-    ignore:
-      - goos: darwin
-        goarch: arm64
     ldflags:
       - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
 

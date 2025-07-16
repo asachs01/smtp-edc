@@ -7,6 +7,16 @@ on:
         description: 'Release tag to build'
         required: true
         type: string
+      include_ui:
+        description: 'Include UI builds in release'
+        required: false
+        type: boolean
+        default: true
+      skip_tests:
+        description: 'Skip tests (emergency releases only)'
+        required: false
+        type: boolean
+        default: false
   push:
     tags:
       - 'v*'
@@ -15,20 +25,373 @@ permissions:
   contents: write
   packages: write
 
+env:
+  GO_VERSION: '1.21'
+  NODE_VERSION: '18'
+  WAILS_VERSION: 'v2.8.0'
+
 jobs:
-  release:
-    name: Create Release
+  # Pre-flight checks and validation
+  validate:
+    name: Validate Release
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      include_ui: ${{ steps.config.outputs.include_ui }}
+      skip_tests: ${{ steps.config.outputs.skip_tests }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Go
+      - name: Determine version and configuration
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # Check if this is a prerelease (contains alpha, beta, rc, or dev)
+          if [[ "$VERSION" =~ (alpha|beta|rc|dev) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+          echo "Processing release for version: $VERSION"
+
+      - name: Set configuration
+        id: config
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "include_ui=${{ github.event.inputs.include_ui }}" >> $GITHUB_OUTPUT
+            echo "skip_tests=${{ github.event.inputs.skip_tests }}" >> $GITHUB_OUTPUT
+          else
+            echo "include_ui=true" >> $GITHUB_OUTPUT
+            echo "skip_tests=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate version format
+        run: |
+          if [[ ! "${{ steps.version.outputs.version }}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9]+(\.[0-9]+)?)?$ ]]; then
+            echo "::error::Invalid version format: ${{ steps.version.outputs.version }}"
+            echo "::error::Expected format: v1.2.3 or v1.2.3-alpha.1"
+            exit 1
+          fi
+
+  # Frontend build and testing
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.include_ui == 'true'
+    outputs:
+      cache-key: ${{ steps.cache-key.outputs.key }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Generate cache key
+        id: cache-key
+        run: |
+          HASH=$(cat frontend/package-lock.json | sha256sum | cut -d' ' -f1)
+          echo "key=frontend-${{ env.NODE_VERSION }}-$HASH" >> $GITHUB_OUTPUT
+
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ steps.cache-key.outputs.key }}
+          restore-keys: |
+            frontend-${{ env.NODE_VERSION }}-
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Lint frontend code
+        if: needs.validate.outputs.skip_tests != 'true'
+        run: cd frontend && npm run lint
+
+      - name: Type check frontend
+        if: needs.validate.outputs.skip_tests != 'true'
+        run: cd frontend && npm run type-check
+
+      - name: Test frontend
+        if: needs.validate.outputs.skip_tests != 'true'
+        run: cd frontend && npm run test:run
+
+      - name: Build frontend
+        run: cd frontend && npm run build
+
+      - name: Upload frontend build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 1
+
+  # UI build matrix for different platforms
+  build-ui:
+    name: Build UI (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    needs: [validate, build-frontend]
+    if: needs.validate.outputs.include_ui == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows
+            os: windows-latest
+            extension: '.exe'
+            goos: windows
+            goarch: amd64
+          - platform: macos-intel
+            os: macos-latest
+            extension: ''
+            goos: darwin
+            goarch: amd64
+          - platform: macos-arm
+            os: macos-latest
+            extension: ''
+            goos: darwin
+            goarch: arm64
+          - platform: linux
+            os: ubuntu-latest
+            extension: ''
+            goos: linux
+            goarch: amd64
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: ${{ env.GO_VERSION }}
           cache: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Cache frontend dependencies
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: ${{ needs.build-frontend.outputs.cache-key }}
+          restore-keys: |
+            frontend-${{ env.NODE_VERSION }}-
+
+      - name: Download frontend build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@${{ env.WAILS_VERSION }}
+
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
+      - name: Build UI application
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+        run: |
+          wails build -platform ${{ matrix.goos }}/${{ matrix.goarch }} -ldflags "-X main.version=${{ needs.validate.outputs.version }}"
+
+      - name: Prepare UI artifact
+        run: |
+          mkdir -p ui-builds
+          if [[ "${{ matrix.platform }}" == "windows" ]]; then
+            cp build/bin/smtp-edc-ui.exe ui-builds/smtp-edc-ui-${{ matrix.platform }}${{ matrix.extension }}
+          elif [[ "${{ matrix.goos }}" == "darwin" ]]; then
+            cp build/bin/smtp-edc-ui.app/Contents/MacOS/smtp-edc-ui ui-builds/smtp-edc-ui-${{ matrix.platform }}${{ matrix.extension }}
+          else
+            cp build/bin/smtp-edc-ui ui-builds/smtp-edc-ui-${{ matrix.platform }}${{ matrix.extension }}
+          fi
+
+      - name: Upload UI build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-build-${{ matrix.platform }}
+          path: ui-builds/
+          retention-days: 1
+
+  # Backend/CLI build and testing
+  build-cli:
+    name: Build CLI
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.outputs.skip_tests != 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Download dependencies
+        run: go mod download
+
+      - name: Lint Go code
+        run: |
+          go fmt ./...
+          go vet ./...
+
+      - name: Run Go tests
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+
+      - name: Build CLI for validation
+        run: go build -tags cli -o bin/smtp-edc ./cmd/smtp-edc
+
+      - name: Test CLI binary
+        run: |
+          ./bin/smtp-edc --help
+          ./bin/smtp-edc --version || echo "Version command may not be implemented yet"
+
+  # Main release creation with GoReleaser
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [validate, build-frontend, build-ui, build-cli]
+    if: always() && needs.validate.result == 'success' && (needs.build-cli.result == 'success' || needs.validate.outputs.skip_tests == 'true')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: false
+
+      - name: Download all UI artifacts
+        if: needs.validate.outputs.include_ui == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ui-build-*
+          path: ui-artifacts/
+          merge-multiple: true
+
+      - name: Organize UI artifacts for release
+        if: needs.validate.outputs.include_ui == 'true'
+        run: |
+          mkdir -p release-assets
+          find ui-artifacts -name "smtp-edc-ui-*" -type f | while read file; do
+            filename=$(basename "$file")
+            cp "$file" "release-assets/$filename"
+          done
+          ls -la release-assets/
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          VERSION="${{ needs.validate.outputs.version }}"
+
+          # Create release notes
+          cat > release-notes.md << 'EOF'
+          # SMTP EDC ${{ needs.validate.outputs.version }}
+
+          ## 🚀 What's New
+
+          This release includes both the CLI tool and desktop UI application for SMTP EDC.
+
+          ## 📦 Installation Options
+
+          ### CLI Tool
+
+          #### Using Homebrew (macOS/Linux)
+          ```bash
+          brew install asachs01/smtp-edc/smtp-edc
+          ```
+
+          #### Manual Installation
+          1. Download the appropriate binary for your platform from the assets below
+          2. Extract the archive
+          3. Move the binary to a directory in your PATH
+          4. Make executable (Unix systems): `chmod +x smtp-edc`
+
+          ### Desktop UI Application
+
+          Download the appropriate UI binary for your platform:
+          - **Windows**: `smtp-edc-ui-windows.exe`
+          - **macOS (Intel)**: `smtp-edc-ui-macos-intel`
+          - **macOS (Apple Silicon)**: `smtp-edc-ui-macos-arm`
+          - **Linux**: `smtp-edc-ui-linux`
+
+          ## 🔧 Usage
+
+          ### CLI Tool
+          ```bash
+          smtp-edc --help
+          ```
+
+          ### Desktop UI
+          Simply run the downloaded UI application for your platform.
+
+          ## 📋 Assets
+
+          ### CLI Binaries
+          - Cross-platform CLI binaries (automatically built by GoReleaser)
+
+          ### UI Applications
+          EOF
+
+          if [[ "${{ needs.validate.outputs.include_ui }}" == "true" ]]; then
+            cat >> release-notes.md << 'EOF'
+          - `smtp-edc-ui-windows.exe` - Windows desktop application
+          - `smtp-edc-ui-macos-intel` - macOS desktop application (Intel)
+          - `smtp-edc-ui-macos-arm` - macOS desktop application (Apple Silicon)
+          - `smtp-edc-ui-linux` - Linux desktop application
+          EOF
+          fi
+
+          cat >> release-notes.md << 'EOF'
+
+          ## 🐛 Bug Fixes and Improvements
+
+          See the full changelog for detailed information about bug fixes and improvements.
+
+          ## 🛡️ Verification
+
+          All binaries are signed and checksums are provided in `checksums.txt`.
+          EOF
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          cat release-notes.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v5
@@ -38,3 +401,138 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload UI assets to release
+        if: needs.validate.outputs.include_ui == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the release ID
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} --jq '.id')
+
+          # Upload each UI asset
+          for file in release-assets/*; do
+            if [[ -f "$file" ]]; then
+              filename=$(basename "$file")
+              echo "Uploading $filename..."
+              gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+                --method POST \
+                --field name="$filename" \
+                --field label="$filename" \
+                --input "$file"
+            fi
+          done
+
+      - name: Update release with enhanced notes
+        if: needs.validate.outputs.include_ui == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} \
+            --method PATCH \
+            --field body='${{ steps.release-notes.outputs.notes }}' \
+            --field prerelease=${{ needs.validate.outputs.is_prerelease }}
+
+  # Post-release cleanup and notifications
+  post-release:
+    name: Post-Release Tasks
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: always() && needs.release.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Clean up artifacts
+        uses: geekyeggo/delete-artifact@v4
+        with:
+          name: |
+            frontend-build
+            ui-build-*
+
+      - name: Update latest release pointer
+        if: needs.validate.outputs.is_prerelease == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} \
+            --method PATCH \
+            --field latest=true
+
+      - name: Create summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # 🎉 Release ${{ needs.validate.outputs.version }} Complete!
+
+          ## 📊 Build Summary
+
+          - **Version**: ${{ needs.validate.outputs.version }}
+          - **Prerelease**: ${{ needs.validate.outputs.is_prerelease }}
+          - **UI Included**: ${{ needs.validate.outputs.include_ui }}
+          - **Tests Skipped**: ${{ needs.validate.outputs.skip_tests }}
+
+          ## 🔗 Links
+
+          - [Release Page](https://github.com/${{ github.repository }}/releases/tag/${{ needs.validate.outputs.version }})
+          - [All Releases](https://github.com/${{ github.repository }}/releases)
+
+          ## 📦 Assets Created
+
+          - CLI binaries for multiple platforms (via GoReleaser)
+          EOF
+
+          if [[ "${{ needs.validate.outputs.include_ui }}" == "true" ]]; then
+            cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          - Desktop UI applications for Windows, macOS, and Linux
+          EOF
+          fi
+
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          - Homebrew formula updated automatically
+          - Checksums and signatures provided
+          EOF
+
+  # Rollback capability in case of issues
+  rollback:
+    name: Rollback Release
+    runs-on: ubuntu-latest
+    needs: [validate, release]
+    if: failure() && needs.release.result == 'failure'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Delete failed release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Try to delete the release if it was created
+          if gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} >/dev/null 2>&1; then
+            echo "Deleting failed release..."
+            gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} \
+              --method DELETE
+          fi
+
+          # Try to delete the tag if it was created by workflow_dispatch
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "Deleting tag..."
+            git push --delete origin ${{ needs.validate.outputs.version }} || true
+          fi
+
+      - name: Create failure summary
+        run: |
+          cat >> $GITHUB_STEP_SUMMARY << 'EOF'
+          # ❌ Release ${{ needs.validate.outputs.version }} Failed
+
+          The release process failed and has been rolled back.
+
+          ## 🔍 Next Steps
+
+          1. Check the workflow logs for specific error details
+          2. Fix any issues identified
+          3. Re-run the release workflow
+
+          ## 🚨 Manual Cleanup Required
+
+          If any artifacts were partially created, you may need to manually clean them up.
+          EOF
