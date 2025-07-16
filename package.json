@@ -1,7 +1,7 @@
 {
   "name": "smtp-edc",
   "version": "0.1.0",
-  "description": "SMTP Enhanced Diagnostic and Configuration tool with Wails UI",
+  "description": "SMTP Enhanced Diagnostic Client tool with Wails UI",
   "scripts": {
     "dev": "make dev",
     "build": "make build",
