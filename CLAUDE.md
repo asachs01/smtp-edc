@@ -412,6 +412,111 @@ These commands make AI calls and may take up to a minute:
 - Provides more informed task creation and updates
 - Recommended for complex technical tasks
 
+## Agentic Development Rules & Best Practices
+
+### 1. General Principles
+
+- **Always work incrementally:** Start with the smallest testable units, validate them, and only then proceed to integration or larger features.
+- **Plan before you code:** Every new feature, refactor, or major bugfix must have a plan in `/plans/` (added to `.gitignore`). Use Taskmaster to break down work into tasks/subtasks.
+- **Log all prompts:** All agentic prompts and major decisions must be logged in `prompt_logs/$ISODATE_$PROJECTNAME_prompts.log` (added to `.gitignore`).
+- **Maintain an ERD:** For any work involving APIs or databases, update or create an Entity Relationship Diagram in `/plans/` (added to `.gitignore`).
+
+### 2. Build, Test, and Lint
+
+- **Backend:**
+  - Use `make build-backend` to build the CLI.
+  - Use `make test-backend` to run Go tests.
+  - Use `make lint-backend` for linting (`go vet`, `staticcheck`, `golangci-lint`).
+  - Use `make format-backend` for formatting (`go fmt`, `goimports`).
+- **Frontend:**
+  - Use `make build-frontend` or `cd frontend && npm run build`.
+  - Use `make test-frontend` or `cd frontend && npm run test`.
+  - Use `make lint-frontend` or `cd frontend && npm run lint`.
+  - Use `make format-frontend` or `cd frontend && npm run format`.
+- **Wails Desktop App:**
+  - Use `make wails-build` to build, `make dev` or `make wails-dev` for development.
+- **Pre-commit hooks:** All code must pass pre-commit hooks (see `.pre-commit-config.yaml`). This includes linting, formatting, and running all Go tests before any commit is accepted.
+  - To set up: `pre-commit install` or `make setup-hooks`.
+
+### 3. Parallel Feature Development with Git Worktrees
+
+- **Use git worktrees for all parallel feature, bugfix, or documentation efforts.**
+  - To start a new feature:
+    ```bash
+    git checkout main
+    git pull
+    git worktree add ../feature-<name> feature/<name>
+    cd ../feature-<name>
+    ```
+  - Run a separate Claude Code session in each worktree:
+    ```bash
+    cd ../feature-<name> && claude
+    ```
+  - When ready to merge:
+    1. Push the feature branch.
+    2. Open a Pull Request.
+    3. After review and merge, remove the worktree:
+       ```bash
+       git worktree remove ../feature-<name>
+       git branch -d feature/<name>
+       ```
+- **Testing and validation:** Use a dedicated worktree (e.g., `project-test-worktree`) for running all tests and validation before merging.
+- **Documentation:** Use a dedicated worktree (e.g., `project-docs-worktree`) for major documentation updates.
+
+### 4. Release & Tagging Workflow
+
+- **Release via tags:** All releases are created by pushing a new git tag (e.g., `v1.2.3`). Before creating a tag:
+  1. Ensure `main` is up to date and all tests pass.
+  2. Update `CHANGELOG.md` (format: [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)).
+  3. Extract release notes from `CHANGELOG.md` for the new version.
+  4. Check existing tags: `git tag --list`.
+  5. Create and push the tag:
+     ```bash
+     git tag vX.Y.Z
+     git push origin vX.Y.Z
+     ```
+  6. GitHub Actions will build and publish the release automatically.
+- **Changelog:** Every PR that changes user-facing behavior must update `CHANGELOG.md` in the correct format.
+- **Release notes:** Use the automated script (see user rules) to extract release notes for GitHub releases.
+
+### 5. Commit & PR Standards
+
+- **All commits must be signed.** Use `git commit -S -am "message"` or `gc -sam "message"`.
+- **Reference tasks in commit messages:** E.g., `feat: implement X (task 2.1)`.
+- **Pull Requests:**
+  - Must pass all CI checks (build, lint, test).
+  - Must be reviewed before merging.
+  - Should reference the relevant Taskmaster task(s) and changelog entry.
+
+### 6. Testing & Validation
+
+- **Test-first:** Write or update tests before implementing new features or bugfixes.
+- **Coverage:** Strive for high test coverage, especially for core logic.
+- **Pre-commit and CI:** All tests must pass locally and in CI before merging.
+- **Manual validation:** For major features, validate in a dedicated worktree before merging.
+
+### 7. Documentation
+
+- **Update docs:** Any new feature, change, or fix must be reflected in `/docs/` and, if relevant, in `/plans/` and `/prompt_logs/`.
+- **Comprehensive README:** Keep `README.md` and `docs/COMPREHENSIVE_README.md` up to date.
+- **Troubleshooting:** Add new issues and solutions to `docs/TROUBLESHOOTING_GUIDE.md` as they are discovered.
+
+### 8. Agentic/AI-Specific Practices
+
+- **Always use context7** in prompts for code generation or research.
+- **Log all agentic prompts** as described above.
+- **Refer to prompt logs, ERD, and test scripts** for context before making architectural or integration decisions.
+- **Use Taskmaster for all planning, breakdown, and progress tracking.**
+- **Never manually edit Taskmaster's `tasks.json` or config files.**
+
+### 9. OSX as Primary Platform
+
+- **All scripts and commands must be compatible with OSX/zsh.** Do not use PowerShell or Windows-specific commands unless explicitly required.
+
+---
+
+_These rules are mandatory for all agentic and human contributors. They ensure robust, reproducible, and parallelizable development, and are designed for seamless integration with Claude Code, Taskmaster, and modern CI/CD workflows._
+
 ---
 
 _This guide ensures Claude Code has immediate access to Task Master's essential functionality for agentic development workflows._
