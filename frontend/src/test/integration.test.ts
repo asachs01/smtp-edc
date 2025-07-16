@@ -84,17 +84,6 @@ describe('SMTP-EDC Integration Tests', () => {
     });
 
     it('should validate email message types match backend expectations', async () => {
-      const config: services.ConfigData = {
-        server: 'smtp.example.com',
-        port: 587,
-        username: 'test@example.com',
-        password: 'password123',
-        authType: 'plain',
-        startTLS: true,
-        skipVerify: false,
-        templates: {},
-      };
-
       const emailRequest: services.EmailRequest = {
         from: 'sender@example.com',
         to: ['recipient@example.com'],
@@ -216,17 +205,6 @@ describe('SMTP-EDC Integration Tests', () => {
 
   describe('Data Structure Consistency Tests', () => {
     it('should handle complex nested data structures correctly', async () => {
-      const config: services.ConfigData = {
-        server: 'smtp.example.com',
-        port: 587,
-        username: 'test@example.com',
-        password: 'password123',
-        authType: 'plain',
-        startTLS: true,
-        skipVerify: false,
-        templates: {},
-      };
-
       const emailRequest: services.EmailRequest = {
         from: 'sender@example.com',
         to: ['recipient1@example.com', 'recipient2@example.com'],

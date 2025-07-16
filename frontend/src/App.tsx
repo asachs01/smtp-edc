@@ -410,9 +410,7 @@ function App() {
             </button>
           </div>
 
-          {emailResult && (
-            <div className='result-display'>{emailResult}</div>
-          )}
+          {emailResult && <div className='result-display'>{emailResult}</div>}
         </section>
       </div>
     </div>
