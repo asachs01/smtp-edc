@@ -148,21 +148,51 @@ Load and process an email template with variable substitution.
 
 The extension can be configured through user settings:
 
-- **default_server**: Default SMTP server hostname
-- **default_port**: Default SMTP port (587)
+- **default_server**: Default SMTP server hostname (e.g., smtp.gmail.com)
+- **default_port**: Default SMTP port (587 for STARTTLS, 465 for SSL/TLS)
+- **default_username**: Username for SMTP authentication
+- **default_from_address**: Default sender email address
+- **default_auth_type**: Authentication method (plain, login, cram-md5, oauth2)
+- **use_starttls**: Enable STARTTLS for secure connections (default: true)
+- **skip_tls_verify**: Skip TLS certificate verification (testing only)
 - **debug_mode**: Enable debug logging
 - **timeout**: Connection timeout in seconds (30)
 - **rate_limit**: Maximum emails per minute (10, 0 = unlimited)
+- **max_attachment_size**: Maximum attachment size in MB (25)
+- **allowed_attachment_types**: Permitted file extensions
+- **template_directory**: Location of email templates
+- **enable_mx_validation**: Validate email addresses via MX records
+
+### Email Provider Setup
+
+For detailed configuration instructions for popular email providers, see our [Email Provider Configuration Guide](docs/EMAIL_PROVIDERS.md). This guide includes setup instructions for:
+
+- Gmail (App Passwords required)
+- Microsoft 365 / Outlook (OAuth2 recommended)
+- Yahoo Mail (App Passwords required)
+- iCloud Mail (App-Specific Passwords)
+- Amazon SES (SMTP Credentials)
+- SendGrid, Mailgun, Postmark
+- Custom/Corporate servers
 
 Configuration is stored in `~/.smtp-edc/config.json`:
 
 ```json
 {
-  "default_server": "smtp.example.com",
+  "default_server": "smtp.gmail.com",
   "default_port": 587,
+  "default_username": "user@gmail.com",
+  "default_from_address": "user@gmail.com",
+  "default_auth_type": "plain",
+  "use_starttls": true,
+  "skip_tls_verify": false,
   "debug_mode": false,
   "timeout": 30,
-  "rate_limit": 10
+  "rate_limit": 10,
+  "max_attachment_size": 25,
+  "allowed_attachment_types": "pdf,doc,docx,xls,xlsx,png,jpg,jpeg,gif,txt,csv",
+  "template_directory": "./templates",
+  "enable_mx_validation": true
 }
 ```
 

@@ -59,16 +59,51 @@
   "user_config": {
     "default_server": {
       "title": "Default SMTP Server",
-      "description": "Default SMTP server hostname to use",
+      "description": "Default SMTP server hostname to use (e.g., smtp.gmail.com, smtp.office365.com)",
       "type": "string",
       "default": "",
       "required": false
     },
     "default_port": {
       "title": "Default SMTP Port",
-      "description": "Default SMTP server port",
+      "description": "Default SMTP server port (587 for STARTTLS, 465 for SSL/TLS, 25 for plain)",
       "type": "number",
       "default": 587,
+      "required": false
+    },
+    "default_username": {
+      "title": "Default Username",
+      "description": "Default username for SMTP authentication",
+      "type": "string",
+      "default": "",
+      "required": false
+    },
+    "default_from_address": {
+      "title": "Default From Address",
+      "description": "Default sender email address",
+      "type": "string",
+      "default": "",
+      "required": false
+    },
+    "default_auth_type": {
+      "title": "Default Authentication Type",
+      "description": "Default authentication method (plain, login, cram-md5, oauth2)",
+      "type": "string",
+      "default": "plain",
+      "required": false
+    },
+    "use_starttls": {
+      "title": "Use STARTTLS",
+      "description": "Enable STARTTLS for secure connections (recommended for port 587)",
+      "type": "boolean",
+      "default": true,
+      "required": false
+    },
+    "skip_tls_verify": {
+      "title": "Skip TLS Verification",
+      "description": "Skip TLS certificate verification (use only for testing)",
+      "type": "boolean",
+      "default": false,
       "required": false
     },
     "debug_mode": {
@@ -90,6 +125,34 @@
       "description": "Maximum emails per minute (0 = unlimited)",
       "type": "number",
       "default": 10,
+      "required": false
+    },
+    "max_attachment_size": {
+      "title": "Max Attachment Size",
+      "description": "Maximum attachment size in MB",
+      "type": "number",
+      "default": 25,
+      "required": false
+    },
+    "allowed_attachment_types": {
+      "title": "Allowed Attachment Types",
+      "description": "Comma-separated list of allowed file extensions (e.g., pdf,doc,jpg)",
+      "type": "string",
+      "default": "pdf,doc,docx,xls,xlsx,png,jpg,jpeg,gif,txt,csv",
+      "required": false
+    },
+    "template_directory": {
+      "title": "Template Directory",
+      "description": "Directory path for email templates",
+      "type": "string",
+      "default": "./templates",
+      "required": false
+    },
+    "enable_mx_validation": {
+      "title": "Enable MX Validation",
+      "description": "Validate email addresses by checking MX records",
+      "type": "boolean",
+      "default": true,
       "required": false
     }
   },

@@ -279,11 +279,56 @@ jobs:
           ./bin/smtp-edc --help
           ./bin/smtp-edc --version || echo "Version command may not be implemented yet"
 
+  # Build DXT Desktop Extension
+  build-dxt:
+    name: Build DXT Extension
+    runs-on: ubuntu-latest
+    needs: validate
+    if: needs.validate.result == 'success'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          
+      - name: Install DXT CLI
+        run: npm install -g @pauloddr/dxt
+        
+      - name: Install dependencies
+        working-directory: ./dxt-extension
+        run: |
+          npm ci
+          cd server && npm ci
+          
+      - name: Validate manifest
+        working-directory: ./dxt-extension
+        run: dxt validate
+        
+      - name: Build DXT package
+        working-directory: ./dxt-extension
+        run: |
+          dxt pack
+          if [ -f "dxt-extension.dxt" ]; then
+            mv dxt-extension.dxt smtp-edc.dxt
+          fi
+          sha256sum smtp-edc.dxt > smtp-edc.sha256
+          
+      - name: Upload DXT artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dxt-extension
+          path: |
+            dxt-extension/smtp-edc.dxt
+            dxt-extension/smtp-edc.sha256
+
   # Main release creation with GoReleaser
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: [validate, build-frontend, build-ui, build-cli]
+    needs: [validate, build-frontend, build-ui, build-cli, build-dxt]
     if: always() && needs.validate.result == 'success' && (needs.build-cli.result == 'success' || needs.validate.outputs.skip_tests == 'true')
     steps:
       - name: Checkout code
@@ -422,6 +467,39 @@ jobs:
                 --input "$file"
             fi
           done
+
+      - name: Download DXT artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dxt-extension
+          path: ./dxt-assets
+
+      - name: Upload DXT Extension to release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the release ID
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/${{ needs.validate.outputs.version }} --jq '.id')
+          
+          # Upload DXT extension
+          if [[ -f "dxt-assets/smtp-edc.dxt" ]]; then
+            echo "Uploading smtp-edc.dxt..."
+            gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+              --method POST \
+              --field name="smtp-edc.dxt" \
+              --field label="SMTP-EDC Desktop Extension (DXT)" \
+              --input "dxt-assets/smtp-edc.dxt"
+          fi
+          
+          # Upload checksum
+          if [[ -f "dxt-assets/smtp-edc.sha256" ]]; then
+            echo "Uploading smtp-edc.sha256..."
+            gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+              --method POST \
+              --field name="smtp-edc.dxt.sha256" \
+              --field label="DXT Extension Checksum" \
+              --input "dxt-assets/smtp-edc.sha256"
+          fi
 
       - name: Update release with enhanced notes
         if: needs.validate.outputs.include_ui == 'true'
