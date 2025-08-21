@@ -68,4 +68,17 @@ embed.go
 
 # Temporary files
 *.bak
+*~
 wails-ui/
+
+# Compiled binaries
+smtp-edc
+smtp-edc-ui
+bin/
+
+# Empty directories
+pkg/smtp/
+pkg/utils/
+
+# Python virtual environment
+.venv/
