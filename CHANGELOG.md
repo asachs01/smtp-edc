@@ -16,6 +16,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Comprehensive MCP integration documentation
 - Example MCP client configurations
 - Tests for MCP functionality
+- Desktop Extension (DXT) packaging for SMTP-EDC
+  - Full DXT v0.1 specification compliance
+  - MCP server implementation with @modelcontextprotocol/sdk
+  - Comprehensive security features (input validation, rate limiting, network security)
+  - Build and packaging scripts for DXT distribution
+  - Test suite with 100% pass rate
+  - Icon and branding assets
+- Enhanced user configuration options for DXT extension
+  - Default username and from address settings
+  - Authentication type selection (plain, login, cram-md5, oauth2)
+  - STARTTLS and TLS verification controls
+  - Attachment size and type restrictions
+  - Template directory configuration
+  - MX record validation toggle
+- Email Provider Configuration Guide
+  - Setup instructions for Gmail, Microsoft 365/Outlook, Yahoo Mail, iCloud
+  - Configuration for Amazon SES, SendGrid, Mailgun, Postmark
+  - Custom/corporate server guidelines
+  - Security best practices and troubleshooting tips
+  - Quick reference table for all providers
+- CI/CD integration for DXT packaging
+  - Automated DXT build in release workflow
+  - Validation with official dxt pack command
+  - Automatic upload of smtp-edc.dxt to GitHub releases
+  - SHA256 checksum generation and distribution
 
 ## [v1.0.0] - 2025-04-22
 
