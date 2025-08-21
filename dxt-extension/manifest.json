@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/pauloddr/dxt/main/schemas/dxt-manifest.schema.json",
+  "dxt_version": "0.1",
+  "name": "smtp-edc",
+  "display_name": "SMTP-EDC Desktop Extension",
+  "version": "1.0.0",
+  "description": "SMTP Enhanced Diagnostics Client - Test and diagnose SMTP servers with comprehensive tools",
+  "long_description": "SMTP-EDC is a powerful SMTP testing and diagnostic tool that provides comprehensive capabilities for testing email server connections, sending test emails, validating email addresses, and managing email templates. This extension brings full SMTP testing capabilities to your AI assistant through the Model Context Protocol.",
+  "author": {
+    "name": "Aaron Sachs",
+    "email": "asachs01@gmail.com",
+    "url": "https://github.com/asachs01"
+  },
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asachs01/smtp-edc"
+  },
+  "homepage": "https://github.com/asachs01/smtp-edc",
+  "documentation": "https://github.com/asachs01/smtp-edc/blob/main/docs/MCP_INTEGRATION.md",
+  "support": "https://github.com/asachs01/smtp-edc/issues",
+  "license": "MIT",
+  "keywords": [
+    "smtp",
+    "email",
+    "testing",
+    "diagnostics",
+    "mail",
+    "server",
+    "validation"
+  ],
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["server/index.js"],
+      "env": {}
+    }
+  },
+  "tools": [
+    {
+      "name": "smtp_test_connection",
+      "description": "Test SMTP server connection and capabilities"
+    },
+    {
+      "name": "smtp_send_email",
+      "description": "Send an email via SMTP"
+    },
+    {
+      "name": "smtp_validate_addresses",
+      "description": "Validate email addresses with optional MX record checking"
+    },
+    {
+      "name": "smtp_load_template",
+      "description": "Load and process email templates"
+    }
+  ],
+  "user_config": {
+    "default_server": {
+      "title": "Default SMTP Server",
+      "description": "Default SMTP server hostname to use",
+      "type": "string",
+      "default": "",
+      "required": false
+    },
+    "default_port": {
+      "title": "Default SMTP Port",
+      "description": "Default SMTP server port",
+      "type": "number",
+      "default": 587,
+      "required": false
+    },
+    "debug_mode": {
+      "title": "Debug Mode",
+      "description": "Enable debug logging for SMTP operations",
+      "type": "boolean",
+      "default": false,
+      "required": false
+    },
+    "timeout": {
+      "title": "Connection Timeout",
+      "description": "Timeout for SMTP connections in seconds",
+      "type": "number",
+      "default": 30,
+      "required": false
+    },
+    "rate_limit": {
+      "title": "Rate Limit",
+      "description": "Maximum emails per minute (0 = unlimited)",
+      "type": "number",
+      "default": 10,
+      "required": false
+    }
+  },
+  "compatibility": {
+    "dxt_version": ">=0.1",
+    "platforms": ["darwin", "linux", "win32"]
+  }
+}
