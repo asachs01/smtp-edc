@@ -22,6 +22,7 @@ SMTP-EDC is a powerful, feature-rich SMTP testing tool written in Go, similar to
 ### User Interfaces
 1. **Command Line Interface (CLI)**: Traditional terminal-based interface for automation and scripting
 2. **Desktop GUI**: Modern cross-platform desktop application built with Wails v2 and React/TypeScript
+3. **MCP Server**: Model Context Protocol server for AI assistant integration
 
 ## Installation
 
@@ -81,6 +82,17 @@ wails dev
 2. Configure your SMTP connection settings
 3. Compose and send test messages
 4. View detailed connection logs and diagnostics
+
+### MCP Server (AI Assistant Integration)
+```bash
+# Start MCP server with STDIO transport (for local AI tools)
+./smtp-edc mcp-server -transport stdio
+
+# Start MCP server with HTTP transport (for remote access)
+./smtp-edc mcp-server -transport http -port 8080
+```
+
+See [MCP Integration Documentation](docs/MCP_INTEGRATION.md) for detailed usage.
 
 ## Configuration
 
@@ -153,6 +165,7 @@ The desktop application uses a carefully chosen color palette:
 ## Documentation
 
 Comprehensive documentation is available in the `docs/` directory:
+- [MCP Integration Guide](docs/MCP_INTEGRATION.md) - Model Context Protocol server documentation
 - [Wails UI Conversion Plan](docs/WAILS_UI_CONVERSION_PLAN.md)
 - [Product Requirements Document](docs/WAILS_UI_PRD.md)
 - [SMTP Security Guide](docs/SMTP_SECURITY_GUIDE.md)

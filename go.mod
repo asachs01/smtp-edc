@@ -5,6 +5,7 @@ go 1.22.0
 toolchain go1.24.4
 
 require (
+	github.com/modelcontextprotocol/go-sdk v0.0.0-20250121000000-000000000000
 	github.com/spf13/pflag v1.0.6
 	github.com/spf13/viper v1.20.1
 	github.com/wailsapp/wails/v2 v2.10.1

@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Model Context Protocol (MCP) server support for AI assistant integration
+- MCP tools for SMTP operations (test_connection, send_email, validate_addresses, load_template)
+- MCP resources for accessing configuration, templates, and statistics
+- MCP server configuration management
+- Support for both STDIO and HTTP transports for MCP
+- Comprehensive MCP integration documentation
+- Example MCP client configurations
+- Tests for MCP functionality
+
 ## [v1.0.0] - 2025-04-22
 
 ### Added

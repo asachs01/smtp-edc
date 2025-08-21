@@ -1,0 +1,31 @@
+{
+  "// Claude Desktop Configuration": "Add this to your Claude Desktop settings",
+  "mcpServers": {
+    "smtp-edc": {
+      "command": "smtp-edc",
+      "args": ["mcp-server", "-transport", "stdio"],
+      "env": {}
+    }
+  },
+  
+  "// Alternative configurations": "",
+  
+  "// For development with custom path": {
+    "mcpServers": {
+      "smtp-edc-dev": {
+        "command": "/path/to/smtp-edc",
+        "args": ["mcp-server", "-transport", "stdio", "-debug"],
+        "env": {}
+      }
+    }
+  },
+  
+  "// For HTTP transport": {
+    "mcpServers": {
+      "smtp-edc-http": {
+        "url": "http://localhost:8080",
+        "transport": "http"
+      }
+    }
+  }
+}

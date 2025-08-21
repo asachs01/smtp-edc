@@ -1,0 +1,24 @@
+{
+  "transport": {
+    "type": "stdio",
+    "http": {
+      "port": 8080,
+      "host": "localhost",
+      "enableCors": true,
+      "enableHttps": false
+    }
+  },
+  "server": {
+    "name": "smtp-edc-mcp",
+    "version": "1.0.0",
+    "description": "SMTP-EDC Model Context Protocol Server",
+    "debug": false,
+    "maxClients": 10,
+    "timeout": 30
+  },
+  "security": {
+    "requireAuth": false,
+    "apiKeys": [],
+    "allowedIps": ["127.0.0.1", "::1"]
+  }
+}
