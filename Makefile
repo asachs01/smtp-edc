@@ -17,13 +17,16 @@ deps-backend: ## Install backend dependencies
 	go mod download
 
 # Build targets
-build: build-frontend build-backend ## Build both frontend and backend
+build: build-frontend build-backend build-mcp ## Build all components
 
 build-frontend: ## Build frontend only
 	cd frontend && npm run build
 
 build-backend: ## Build backend only
 	go build -tags cli -o bin/smtp-edc-cli ./cmd/smtp-edc
+
+build-mcp: ## Build MCP server
+	go build -o bin/smtp-edc-mcp ./cmd/mcp-server
 
 wails-build: build-frontend ## Build the Wails desktop application
 	wails build
@@ -46,6 +49,9 @@ test-frontend: ## Run frontend tests
 
 test-backend: ## Run backend tests
 	go test -tags cli -v ./...
+
+test-mcp: ## Run MCP tests
+	go test -v ./internal/mcp/...
 
 test-coverage: ## Run backend tests with coverage
 	go test -tags cli -v -coverprofile=coverage.out ./...
