@@ -1,6 +1,6 @@
 module github.com/asachs/smtp-edc
 
-go 1.22.0
+go 1.23.0
 
 toolchain go1.24.4
 
@@ -45,6 +45,7 @@ require (
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	github.com/wailsapp/go-webview2 v1.0.19 // indirect
 	github.com/wailsapp/mimetype v1.4.1 // indirect
+	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/net v0.35.0 // indirect
