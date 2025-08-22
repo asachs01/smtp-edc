@@ -1,0 +1,37 @@
+{
+  "name": "smtp-edc-mcp-binary-dxt",
+  "version": "1.0.0",
+  "description": "Binary Desktop Extension for SMTP-EDC MCP Server",
+  "author": "Aaron Sachs <asachs01@gmail.com>",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "make build",
+    "pack": "make pack",
+    "clean": "make clean",
+    "test": "make test",
+    "dev": "make dev",
+    "all": "make all",
+    "install-dxt-cli": "npm install -g @anthropic-ai/dxt",
+    "validate": "dxt validate"
+  },
+  "devDependencies": {
+    "@anthropic-ai/dxt": "latest"
+  },
+  "keywords": [
+    "mcp",
+    "smtp",
+    "email",
+    "dxt",
+    "desktop-extension",
+    "claude"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asachs01/smtp-edc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/asachs01/smtp-edc/issues"
+  },
+  "homepage": "https://github.com/asachs01/smtp-edc#readme"
+}

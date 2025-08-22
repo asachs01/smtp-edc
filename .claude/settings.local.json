@@ -8,7 +8,9 @@
       "Bash(wails generate:*)",
       "Bash(wails build:*)",
       "Bash(make:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(git log:*)",
+      "Bash(git tag:*)"
     ],
     "deny": []
   }
