@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/asachs/smtp-edc/internal/services"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 // MCPServer represents the MCP server for SMTP-EDC
