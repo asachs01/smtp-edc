@@ -4,7 +4,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +14,9 @@ import (
 	"time"
 
 	"github.com/asachs/smtp-edc/internal/client"
+	"github.com/asachs/smtp-edc/internal/mcp"
 	"github.com/asachs/smtp-edc/internal/message"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
@@ -144,12 +148,11 @@ func readFile(filename string) (string, error) {
 }
 
 func main() {
-	// Check if this is a subcommand
+	// Check if this is the mcp-server subcommand
 	if len(os.Args) > 1 && os.Args[1] == "mcp-server" {
-		// This should be handled by the mcp-server binary, not this CLI
-		fmt.Fprintf(os.Stderr, "Error: mcp-server should be run as a separate command: smtp-edc-mcp-server\n")
-		fmt.Fprintf(os.Stderr, "Build it with: go build -o bin/smtp-edc-mcp-server ./cmd/mcp-server\n")
-		os.Exit(1)
+		// Run the MCP server
+		runMCPServer()
+		return
 	}
 
 	// Validate required fields
@@ -309,4 +312,70 @@ func main() {
 	}
 
 	fmt.Println("Message sent successfully")
+}
+
+func runMCPServer() {
+	// Parse MCP server specific flags
+	var (
+		debug = flag.Bool("debug", false, "Enable debug logging")
+		help  = flag.Bool("help", false, "Show help message")
+	)
+
+	// Remove the "mcp-server" from args before parsing
+	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
+	flag.Parse()
+
+	if *help {
+		printMCPHelp()
+		os.Exit(0)
+	}
+
+	if *debug {
+		log.Println("Starting SMTP-EDC MCP Server with STDIO transport")
+	}
+
+	// Create the MCP server with all tools configured
+	server := mcp.CreateMCPServer(*debug)
+
+	// Run the server with STDIO transport
+	if err := server.Run(context.Background(), &mcpsdk.StdioTransport{}); err != nil {
+		log.Fatalf("Failed to run MCP server: %v", err)
+	}
+}
+
+func printMCPHelp() {
+	fmt.Println(`SMTP-EDC MCP Server
+
+This server provides Model Context Protocol (MCP) access to SMTP-EDC functionality,
+allowing AI assistants and other MCP clients to interact with SMTP servers.
+
+Usage:
+  smtp-edc mcp-server [options]
+
+Options:
+  -debug
+        Enable debug logging
+  -help
+        Show this help message
+
+Available Tools:
+  - smtp_test_connection: Test SMTP server connection and capabilities
+  - smtp_send_email: Send an email via SMTP
+  - smtp_validate_addresses: Validate email addresses and check MX records
+  - smtp_load_template: Load and process email templates
+
+Available Resources:
+  - smtp-edc://config/current: Current configuration settings
+  - smtp-edc://templates/list: Available email templates
+  - smtp-edc://stats/auth: Authentication statistics
+
+Examples:
+  # Start MCP server with STDIO transport (for Claude Desktop)
+  smtp-edc mcp-server
+
+  # Enable debug logging
+  smtp-edc mcp-server -debug
+
+For more information about MCP, visit: https://modelcontextprotocol.io/
+`)
 }
