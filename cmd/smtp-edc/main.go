@@ -18,6 +18,12 @@ import (
 )
 
 func init() {
+	// Check for subcommands before parsing flags
+	if len(os.Args) > 1 && os.Args[1] == "mcp-server" {
+		// Don't parse flags, let main() handle this
+		return
+	}
+
 	// Set default values
 	viper.SetDefault("port", 25)
 	viper.SetDefault("retries", 3)
@@ -69,9 +75,17 @@ func init() {
 	pflag.IntP("retries", "r", 3, "Number of retry attempts for failed operations")
 	pflag.IntP("timeout", "o", 30, "Connection timeout in seconds")
 	pflag.BoolP("validate_mx", "m", false, "Validate email addresses by checking MX records")
+	pflag.BoolP("help", "", false, "Display help information")
 
-	// Bind flags to Viper
+	// Parse flags
 	pflag.Parse()
+	
+	// Handle help flag properly
+	if help, _ := pflag.CommandLine.GetBool("help"); help {
+		pflag.Usage()
+		os.Exit(0)
+	}
+	
 	viper.BindPFlags(pflag.CommandLine)
 
 	// Set config file
@@ -130,6 +144,14 @@ func readFile(filename string) (string, error) {
 }
 
 func main() {
+	// Check if this is a subcommand
+	if len(os.Args) > 1 && os.Args[1] == "mcp-server" {
+		// This should be handled by the mcp-server binary, not this CLI
+		fmt.Fprintf(os.Stderr, "Error: mcp-server should be run as a separate command: smtp-edc-mcp-server\n")
+		fmt.Fprintf(os.Stderr, "Build it with: go build -o bin/smtp-edc-mcp-server ./cmd/mcp-server\n")
+		os.Exit(1)
+	}
+
 	// Validate required fields
 	server := viper.GetString("server")
 	from := viper.GetString("from")
