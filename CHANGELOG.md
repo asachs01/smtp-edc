@@ -42,6 +42,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic upload of smtp-edc.dxt to GitHub releases
   - SHA256 checksum generation and distribution
 
+## [v1.3.0] - 2025-07-16
+
+### Added
+- Wails v2 integration for desktop UI application
+- React/TypeScript frontend with modern build tooling
+- Integrated release workflow with UI builds
+- Frontend development environment with ESLint and Prettier
+- API documentation with OpenAPI specification
+- Desktop application binary (smtp-edc-ui)
+- Automated UI asset uploads to GitHub releases
+- Release verification scripts
+
+### Changed
+- Enhanced release workflow to support multiple build artifacts
+- Reorganized project structure to support UI components
+- Updated build system to handle both CLI and UI builds
+
+### Removed
+- Duplicate configuration directories (.clinerules, .serena, .windsurf, .trae)
+
+## [v1.2.0] - 2025-06-25
+
+### Added
+- Homebrew formula integrated into main repository
+- GitHub Pages documentation site with Jekyll
+- MIT License file
+- Comprehensive README updates with installation instructions
+
+### Changed
+- GoReleaser configuration to specify main path correctly
+- Release workflow improvements for better automation
+- Updated documentation structure
+
+### Fixed
+- Homebrew formula test to use --help instead of --version
+- Build path specifications in GoReleaser
+
+## [v1.1.0] - 2025-04-24
+
+### Added
+- Comprehensive test suite for core functionality
+- Project logo and branding assets
+- Initial documentation improvements
+
+### Changed
+- README updates with better project description
+- Minor code improvements and cleanup
+
 ## [v1.0.0] - 2025-04-22
 
 ### Added
@@ -70,3 +118,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Security
 - Added support for secure authentication methods
 - Added TLS/STARTTLS support for encrypted connections
+
+[Unreleased]: https://github.com/asachs01/smtp-edc/compare/v1.3.0...HEAD
+[v1.3.0]: https://github.com/asachs01/smtp-edc/compare/v1.2.0...v1.3.0
+[v1.2.0]: https://github.com/asachs01/smtp-edc/compare/v1.1.0...v1.2.0
+[v1.1.0]: https://github.com/asachs01/smtp-edc/compare/v1.0.0...v1.1.0
+[v1.0.0]: https://github.com/asachs01/smtp-edc/releases/tag/v1.0.0
