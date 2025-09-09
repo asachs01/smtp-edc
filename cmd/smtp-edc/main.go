@@ -4,7 +4,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -12,12 +14,20 @@ import (
 	"time"
 
 	"github.com/asachs/smtp-edc/internal/client"
+	"github.com/asachs/smtp-edc/internal/mcp"
 	"github.com/asachs/smtp-edc/internal/message"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 func init() {
+	// Check for subcommands before parsing flags
+	if len(os.Args) > 1 && os.Args[1] == "mcp-server" {
+		// Don't parse flags, let main() handle this
+		return
+	}
+
 	// Set default values
 	viper.SetDefault("port", 25)
 	viper.SetDefault("retries", 3)
@@ -69,9 +79,17 @@ func init() {
 	pflag.IntP("retries", "r", 3, "Number of retry attempts for failed operations")
 	pflag.IntP("timeout", "o", 30, "Connection timeout in seconds")
 	pflag.BoolP("validate_mx", "m", false, "Validate email addresses by checking MX records")
+	pflag.BoolP("help", "", false, "Display help information")
 
-	// Bind flags to Viper
+	// Parse flags
 	pflag.Parse()
+	
+	// Handle help flag properly
+	if help, _ := pflag.CommandLine.GetBool("help"); help {
+		pflag.Usage()
+		os.Exit(0)
+	}
+	
 	viper.BindPFlags(pflag.CommandLine)
 
 	// Set config file
@@ -130,6 +148,13 @@ func readFile(filename string) (string, error) {
 }
 
 func main() {
+	// Check if this is the mcp-server subcommand
+	if len(os.Args) > 1 && os.Args[1] == "mcp-server" {
+		// Run the MCP server
+		runMCPServer()
+		return
+	}
+
 	// Validate required fields
 	server := viper.GetString("server")
 	from := viper.GetString("from")
@@ -287,4 +312,70 @@ func main() {
 	}
 
 	fmt.Println("Message sent successfully")
+}
+
+func runMCPServer() {
+	// Parse MCP server specific flags
+	var (
+		debug = flag.Bool("debug", false, "Enable debug logging")
+		help  = flag.Bool("help", false, "Show help message")
+	)
+
+	// Remove the "mcp-server" from args before parsing
+	os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
+	flag.Parse()
+
+	if *help {
+		printMCPHelp()
+		os.Exit(0)
+	}
+
+	if *debug {
+		log.Println("Starting SMTP-EDC MCP Server with STDIO transport")
+	}
+
+	// Create the MCP server with all tools configured
+	server := mcp.CreateMCPServer(*debug)
+
+	// Run the server with STDIO transport
+	if err := server.Run(context.Background(), &mcpsdk.StdioTransport{}); err != nil {
+		log.Fatalf("Failed to run MCP server: %v", err)
+	}
+}
+
+func printMCPHelp() {
+	fmt.Println(`SMTP-EDC MCP Server
+
+This server provides Model Context Protocol (MCP) access to SMTP-EDC functionality,
+allowing AI assistants and other MCP clients to interact with SMTP servers.
+
+Usage:
+  smtp-edc mcp-server [options]
+
+Options:
+  -debug
+        Enable debug logging
+  -help
+        Show this help message
+
+Available Tools:
+  - smtp_test_connection: Test SMTP server connection and capabilities
+  - smtp_send_email: Send an email via SMTP
+  - smtp_validate_addresses: Validate email addresses and check MX records
+  - smtp_load_template: Load and process email templates
+
+Available Resources:
+  - smtp-edc://config/current: Current configuration settings
+  - smtp-edc://templates/list: Available email templates
+  - smtp-edc://stats/auth: Authentication statistics
+
+Examples:
+  # Start MCP server with STDIO transport (for Claude Desktop)
+  smtp-edc mcp-server
+
+  # Enable debug logging
+  smtp-edc mcp-server -debug
+
+For more information about MCP, visit: https://modelcontextprotocol.io/
+`)
 }

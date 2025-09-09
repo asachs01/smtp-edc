@@ -1,20 +1,20 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/asachs/smtp-edc/internal/mcp"
+	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
 func main() {
 	var (
-		transport = flag.String("transport", "stdio", "Transport type: stdio or http")
-		port      = flag.Int("port", 8080, "Port for HTTP transport")
-		debug     = flag.Bool("debug", false, "Enable debug logging")
-		help      = flag.Bool("help", false, "Show help message")
+		debug = flag.Bool("debug", false, "Enable debug logging")
+		help  = flag.Bool("help", false, "Show help message")
 	)
 
 	flag.Parse()
@@ -24,16 +24,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Create and start the MCP server
-	server := mcp.NewMCPServer(*debug)
-	
 	if *debug {
-		log.Printf("Starting SMTP-EDC MCP Server with transport: %s\n", *transport)
+		log.Println("Starting SMTP-EDC MCP Server with STDIO transport")
 	}
 
-	// Start the server with the specified transport
-	if err := server.Start(*transport); err != nil {
-		log.Fatalf("Failed to start MCP server: %v", err)
+	// Create the MCP server with all tools configured
+	server := mcp.CreateMCPServer(*debug)
+
+	// Run the server with STDIO transport
+	if err := server.Run(context.Background(), &mcpsdk.StdioTransport{}); err != nil {
+		log.Fatalf("Failed to run MCP server: %v", err)
 	}
 }
 
