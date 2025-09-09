@@ -1,0 +1,130 @@
+name: Build Binary DXT Extension
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  build-binary-dxt:
+    name: Build Binary DXT Extension
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install DXT CLI
+        run: npm install -g @anthropic-ai/dxt
+        
+      - name: Get version
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION=${GITHUB_REF#refs/tags/v}
+          else
+            VERSION=${{ github.event.inputs.version }}
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Build binaries
+        working-directory: ./dxt-binary-extension
+        run: |
+          chmod +x scripts/build.sh
+          bash scripts/build.sh
+          
+      - name: Validate manifest
+        working-directory: ./dxt-binary-extension
+        run: dxt validate
+        
+      - name: Create DXT package
+        working-directory: ./dxt-binary-extension
+        run: |
+          dxt pack
+          if [ -f "dxt-binary-extension.dxt" ]; then
+            mv dxt-binary-extension.dxt smtp-edc-mcp-binary.dxt
+          fi
+          
+      - name: Calculate checksum
+        working-directory: ./dxt-binary-extension
+        run: |
+          sha256sum smtp-edc-mcp-binary.dxt > smtp-edc-mcp-binary.dxt.sha256
+          echo "DXT_CHECKSUM=$(cat smtp-edc-mcp-binary.dxt.sha256 | cut -d' ' -f1)" >> $GITHUB_ENV
+          
+      - name: Upload DXT artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: smtp-edc-mcp-binary-dxt-${{ steps.get_version.outputs.version }}
+          path: |
+            dxt-binary-extension/smtp-edc-mcp-binary.dxt
+            dxt-binary-extension/smtp-edc-mcp-binary.dxt.sha256
+          retention-days: 30
+
+  create-release:
+    name: Upload to GitHub Release
+    needs: build-binary-dxt
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Get version
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        
+      - name: Download DXT artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: smtp-edc-mcp-binary-dxt-${{ steps.get_version.outputs.version }}
+          path: ./release-assets
+          
+      - name: Upload to existing release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Get the release ID for this tag
+          RELEASE_ID=$(gh api repos/${{ github.repository }}/releases/tags/v${{ steps.get_version.outputs.version }} --jq '.id' || echo "")
+          
+          if [ -z "$RELEASE_ID" ]; then
+            echo "No release found for tag v${{ steps.get_version.outputs.version }}, skipping upload"
+            exit 0
+          fi
+          
+          # Upload Binary DXT extension
+          if [[ -f "release-assets/smtp-edc-mcp-binary.dxt" ]]; then
+            echo "Uploading smtp-edc-mcp-binary.dxt..."
+            gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+              --method POST \
+              --field name="smtp-edc-mcp-binary.dxt" \
+              --field label="SMTP-EDC MCP Binary Desktop Extension (DXT)" \
+              --input "release-assets/smtp-edc-mcp-binary.dxt"
+          fi
+          
+          # Upload checksum
+          if [[ -f "release-assets/smtp-edc-mcp-binary.dxt.sha256" ]]; then
+            echo "Uploading checksum..."
+            gh api repos/${{ github.repository }}/releases/$RELEASE_ID/assets \
+              --method POST \
+              --field name="smtp-edc-mcp-binary.dxt.sha256" \
+              --field label="Binary DXT Extension Checksum" \
+              --input "release-assets/smtp-edc-mcp-binary.dxt.sha256"
+          fi

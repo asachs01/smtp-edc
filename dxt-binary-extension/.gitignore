@@ -1,0 +1,23 @@
+# Compiled binaries
+server/
+*.exe
+
+# DXT packages
+*.dxt
+*.dxt.sha256
+
+# Build artifacts
+dist/
+build/
+tmp/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Logs
+*.log
